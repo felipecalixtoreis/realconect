@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: "A vida é curta. Está pronta?",
   description: "realconect.com",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon.svg",
+    apple: "/icons/icon-192.png",
   },
   openGraph: {
     title: "A vida é curta. Está pronta?",

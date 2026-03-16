@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="50%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#6D28D9"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="7" ry="7" fill="url(#bg)"/>
+  <!-- Left wing -->
+  <path d="M8 14c-2.5-1.2-4.5-0.4-5 1.6s0.8 2.8 2.5 2.4" stroke="rgba(200,180,255,0.6)" stroke-width="1" fill="rgba(200,180,255,0.1)" stroke-linecap="round"/>
+  <path d="M9 12.5c-2-1.6-4-1.2-4.4 0.4s0.4 2.4 2 2" stroke="rgba(200,180,255,0.4)" stroke-width="0.8" fill="rgba(200,180,255,0.06)" stroke-linecap="round"/>
+  <!-- Right wing -->
+  <path d="M24 14c2.5-1.2 4.5-0.4 5 1.6s-0.8 2.8-2.5 2.4" stroke="rgba(200,180,255,0.6)" stroke-width="1" fill="rgba(200,180,255,0.1)" stroke-linecap="round"/>
+  <path d="M23 12.5c2-1.6 4-1.2 4.4 0.4s-0.4 2.4-2 2" stroke="rgba(200,180,255,0.4)" stroke-width="0.8" fill="rgba(200,180,255,0.06)" stroke-linecap="round"/>
+  <!-- Body glow -->
+  <ellipse cx="16" cy="17" rx="4.5" ry="6" fill="rgba(139,92,246,0.12)"/>
+  <!-- Head -->
+  <circle cx="16" cy="10.5" r="3.8" fill="rgba(200,180,255,0.92)"/>
+  <!-- Eyes -->
+  <circle cx="14.6" cy="10" r="0.55" fill="rgba(255,255,255,0.95)"/>
+  <circle cx="17.4" cy="10" r="0.55" fill="rgba(255,255,255,0.95)"/>
+  <!-- Body -->
+  <path d="M16 15c-3.2 0-5.5 2.2-6 5.5h12c-0.5-3.3-2.8-5.5-6-5.5z" fill="rgba(200,180,255,0.72)"/>
+  <!-- Robe detail -->
+  <path d="M13.2 17.8c0 0 1.3 1.7 2.8 1.7s2.8-1.7 2.8-1.7" stroke="rgba(139,92,246,0.4)" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+  <!-- Bow -->
+  <path d="M22 8c1.8-1.3 3.2-0.4 3.2 1.3s-1.8 2.2-3.2 1.3" stroke="rgba(255,180,200,0.95)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <line x1="22" y1="9.3" x2="26" y2="6.5" stroke="rgba(255,180,200,0.95)" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- Arrow tip -->
+  <path d="M26 6.5l0.9 0.4-0.4 0.9" stroke="rgba(255,180,200,0.95)" stroke-width="0.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Crown/laurel -->
+  <path d="M13.2 7.5c0.4-0.9 1.3-1.3 2.8-1.3s2.3 0.4 2.8 1.3" stroke="rgba(255,215,0,0.55)" stroke-width="0.7" fill="none" stroke-linecap="round"/>
+</svg>
