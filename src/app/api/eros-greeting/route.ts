@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     // Get user's previous responses
     const { data: respostas } = await supabase
       .from('respostas')
-      .select('etapa, resposta_texto')
+      .select('etapa, resposta')
       .eq('session_id', sessionId)
       .eq('user_id', user.id)
       .order('etapa', { ascending: true })
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         totalRespondidas,
         respostasAnteriores: (respostas || []).map(r => ({
           etapa: r.etapa,
-          resposta: r.resposta_texto || '',
+          resposta: r.resposta || '',
         })),
         contextoAdmin,
         historicoAcumulado,
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       totalRespondidas,
       respostasAnteriores: (respostas || []).map(r => ({
         etapa: r.etapa,
-        resposta: r.resposta_texto || '',
+        resposta: r.resposta || '',
       })),
       contextoAdmin,
       historicoAcumulado,
