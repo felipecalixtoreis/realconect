@@ -5,6 +5,25 @@ import { chatComEros } from '@/lib/openai'
 import { ETAPAS } from '@/lib/etapas'
 import { buscarHistoricoAcumulado } from '@/lib/historico'
 
+// ── Detecção de pedido de "mais desejos" ──────────────────────────────
+const BONUS_PATTERNS = [
+  /mais\s*(3|três|tres)\s*(desejos?|pedidos?|wishes?)/i,
+  /quero\s*mais\s*(desejos?|pedidos?)/i,
+  /(me\s*)?(dê|da|conceda|dá)\s*mais\s*(desejos?|pedidos?)/i,
+  /(3|três|tres)\s*(desejos?|pedidos?)\s*(extras?|a\s*mais)/i,
+  /mais\s*(desejos?|pedidos?)\s*(extras?|por\s*favor)?/i,
+  /pedir\s*mais\s*(desejos?|pedidos?)/i,
+  /desejo\s*(ter\s*)?mais\s*(desejos?|pedidos?)/i,
+  /aumentar?\s*(os?\s*)?(desejos?|pedidos?)/i,
+]
+
+function isAskingForMoreWishes(text: string): boolean {
+  return BONUS_PATTERNS.some(p => p.test(text))
+}
+
+// ── Mensagem especial do Eros ao conceder bônus ──────────────────────
+const BONUS_EROS_MESSAGE = `Esta foi a única vez que irei permitir que você tome atalhos para obter sabedoria, não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro?! Então agora, antes de conceder os seus desejos extras, quem pergunta sou eu! Você está conseguindo perceber Samira? Acha que está pronta para o que pode acontecer e sei que já pensou nisso?`
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -23,6 +42,7 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient()
 
+    // Buscar interações desta etapa
     const { data: interactions } = await admin
       .from('genie_interactions')
       .select('*')
@@ -31,9 +51,24 @@ export async function GET(request: NextRequest) {
       .eq('etapa', Number(etapa))
       .order('interaction_number', { ascending: true })
 
+    // Verificar se bonus foi concedido nesta etapa
+    const { data: bonus } = await admin
+      .from('bonus_wishes')
+      .select('etapa')
+      .eq('session_id', session_id)
+      .eq('user_id', user.id)
+      .single()
+
+    const bonusActiveThisStage = bonus?.etapa === Number(etapa)
+    const maxWishes = bonusActiveThisStage ? 6 : 3
+    const count = interactions?.length || 0
+
     return NextResponse.json({
       interactions: interactions || [],
-      remaining: 3 - (interactions?.length || 0),
+      remaining: Math.max(0, maxWishes - count),
+      max_wishes: maxWishes,
+      bonus_granted: !!bonus,
+      bonus_stage: bonus?.etapa || null,
     })
   } catch (error) {
     console.error('Genie GET error:', error)
@@ -57,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient()
 
-    // Check how many interactions already exist
+    // Buscar interações existentes nesta etapa
     const { data: existing } = await admin
       .from('genie_interactions')
       .select('*')
@@ -67,12 +102,77 @@ export async function POST(request: NextRequest) {
       .order('interaction_number', { ascending: true })
 
     const count = existing?.length || 0
-    if (count >= 3) {
+
+    // Verificar se bonus já foi concedido (globalmente, qualquer etapa)
+    const { data: bonusRecord } = await admin
+      .from('bonus_wishes')
+      .select('*')
+      .eq('session_id', session_id)
+      .eq('user_id', user.id)
+      .single()
+
+    const bonusActiveThisStage = bonusRecord?.etapa === etapa
+    const maxWishes = bonusActiveThisStage ? 6 : 3
+
+    if (count >= maxWishes) {
       return NextResponse.json({
-        error: 'Você já usou seus 3 pedidos com Eros nesta etapa.',
+        error: bonusActiveThisStage
+          ? 'Você já usou todos os seus 6 pedidos nesta etapa.'
+          : 'Você já usou seus 3 pedidos com Eros nesta etapa.',
         remaining: 0,
       }, { status: 429 })
     }
+
+    // ── Detectar pedido de mais desejos ──────────────────────────────
+    if (isAskingForMoreWishes(pergunta) && count < 3) {
+      // Só concede se:
+      // 1. Ainda está dentro dos 3 primeiros desejos
+      // 2. Bonus NUNCA foi concedido antes neste experimento
+      if (!bonusRecord) {
+        // Conceder bonus!
+        const interactionNumber = count + 1
+
+        // Salvar a interação com a resposta especial
+        const { data: saved, error: saveError } = await admin
+          .from('genie_interactions')
+          .insert({
+            session_id,
+            user_id: user.id,
+            etapa,
+            interaction_number: interactionNumber,
+            pergunta,
+            resposta: BONUS_EROS_MESSAGE,
+          })
+          .select()
+          .single()
+
+        if (saveError) {
+          console.error('Error saving bonus interaction:', saveError)
+          return NextResponse.json({ error: 'Failed to save interaction' }, { status: 500 })
+        }
+
+        // Registrar concessão do bônus
+        await admin.from('bonus_wishes').insert({
+          session_id,
+          user_id: user.id,
+          etapa,
+        })
+
+        // Agora o max é 6 para esta etapa
+        const newMax = 6
+
+        return NextResponse.json({
+          interaction: saved,
+          remaining: newMax - interactionNumber,
+          max_wishes: newMax,
+          bonus_just_granted: true,
+        })
+      }
+      // Se bonus já foi concedido antes, trata como pedido normal
+      // (Eros responderá naturalmente via IA)
+    }
+
+    // ── Fluxo normal ────────────────────────────────────────────────
 
     // Get user's response for this stage
     const { data: minhaResposta } = await admin
@@ -187,7 +287,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       interaction: saved,
-      remaining: 3 - interactionNumber,
+      remaining: maxWishes - interactionNumber,
+      max_wishes: maxWishes,
     })
   } catch (error) {
     console.error('Genie POST error:', error)

@@ -71,7 +71,7 @@ CREATE TABLE genie_interactions (
   session_id UUID NOT NULL REFERENCES experiment_session(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   etapa INT NOT NULL CHECK (etapa BETWEEN 1 AND 6),
-  interaction_number INT NOT NULL CHECK (interaction_number BETWEEN 1 AND 3),
+  interaction_number INT NOT NULL CHECK (interaction_number BETWEEN 1 AND 6),
   pergunta TEXT NOT NULL,
   resposta TEXT NOT NULL,
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -171,6 +171,23 @@ CREATE POLICY "eros_hints_select"
 CREATE POLICY "eros_hints_insert"
   ON eros_hints FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+-- Tabela: bonus_wishes (concessao de desejos extras, 1x por usuario)
+CREATE TABLE bonus_wishes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES experiment_session(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  etapa INT NOT NULL CHECK (etapa BETWEEN 1 AND 6),
+  granted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(session_id, user_id)
+);
+
+ALTER TABLE bonus_wishes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access on bonus_wishes"
+  ON bonus_wishes FOR ALL
+  USING (true)
+  WITH CHECK (true);
 
 -- Policies for admin_context (only service_role can access)
 CREATE POLICY "No direct access to admin_context"

@@ -29,16 +29,18 @@
 ## Acesso Direto ao Banco de Dados (PostgreSQL)
 
 ```bash
-PGPASSWORD="<ver .env.local>" psql -h db.ljuhtcgldzuuagfeglvi.supabase.co -p 5432 -U postgres -d postgres
+PGPASSWORD="1891SeNZiKUx43y2" psql "postgresql://postgres:1891SeNZiKUx43y2@db.ljuhtcgldzuuagfeglvi.supabase.co:6543/postgres?sslmode=require"
 ```
 
 | Parametro | Valor |
 |-----------|-------|
 | Host | `db.ljuhtcgldzuuagfeglvi.supabase.co` |
-| Porta | `5432` |
+| Porta | `6543` (transaction mode) |
 | Usuario | `postgres` |
-| Senha | Ver `.env.local` ou painel Supabase |
+| Senha | `1891SeNZiKUx43y2` |
 | Database | `postgres` |
+| SSL | `require` |
+| Regiao | `us-east-1` (North Virginia) |
 
 ---
 

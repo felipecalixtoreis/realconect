@@ -21,6 +21,8 @@ interface GenieChatProps {
 export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpand = false }: GenieChatProps) {
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [remaining, setRemaining] = useState(3)
+  const [maxWishes, setMaxWishes] = useState(3)
+  const [bonusJustGranted, setBonusJustGranted] = useState(false)
   const [pergunta, setPergunta] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
@@ -32,6 +34,7 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
   const chatEndRef = useRef<HTMLDivElement>(null)
   const audioCache = useRef<Map<string, string>>(new Map())
 
+  const wishWord = maxWishes === 6 ? '6' : '3'
   const introText = `Eu sou Eros. Não o cupido dos contos infantis... eu sou a força primordial que existia antes dos próprios deuses. Eu sou o impulso que trouxe ordem ao caos, e que une o que estava destinado a se encontrar. Você não precisa se apresentar... sei que você é ${nomeUsuario}. Sei o porquê de você estar aqui, além mesmo do que você pensa ter te trazido até aqui. Nesta etapa, você tem 3 pedidos para me fazer. Escolha-os com sabedoria. Cada pergunta revela tanto sobre quem pergunta quanto sobre o que é perguntado.`
 
   const playAudio = useCallback(async (text: string, id: string) => {
@@ -88,6 +91,7 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
         const data = await res.json()
         setInteractions(data.interactions || [])
         setRemaining(data.remaining ?? 3)
+        setMaxWishes(data.max_wishes ?? 3)
         if (data.interactions?.length > 0) {
           setShowIntro(false)
           setExpanded(true)
@@ -144,7 +148,14 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
       if (data.interaction) {
         setInteractions(prev => [...prev, data.interaction])
         setRemaining(data.remaining)
+        if (data.max_wishes) setMaxWishes(data.max_wishes)
         setPergunta('')
+
+        // Se bonus acabou de ser concedido, mostrar animação especial
+        if (data.bonus_just_granted) {
+          setBonusJustGranted(true)
+          setTimeout(() => setBonusJustGranted(false), 5000)
+        }
 
         // Auto-play the response audio
         setTimeout(() => {
@@ -298,7 +309,7 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
                     <div className="mt-2 flex items-center justify-between">
                       <AudioButton text={interaction.resposta} id={interaction.id} size="xs" />
                       <p className="text-indigo-500/40 text-[10px]">
-                        Pedido {interaction.interaction_number} de 3
+                        Pedido {interaction.interaction_number} de {maxWishes}
                       </p>
                     </div>
                   </div>
@@ -354,7 +365,9 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
           ) : (
             <div className="border-t border-indigo-500/20 p-4 text-center">
               <p className="text-indigo-400/60 text-sm italic">
-                Seus 3 pedidos foram utilizados nesta etapa. Eros aguarda na próxima jornada.
+                {maxWishes > 3
+                  ? 'Seus 6 pedidos (incluindo os bônus) foram utilizados nesta etapa. Eros aguarda na próxima jornada.'
+                  : 'Seus 3 pedidos foram utilizados nesta etapa. Eros aguarda na próxima jornada.'}
               </p>
             </div>
           )}
