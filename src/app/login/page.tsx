@@ -25,7 +25,9 @@ export default function LoginPage() {
     if (error) {
       setError('Email ou senha incorretos.')
     } else {
-      router.push('/dashboard')
+      // Full page navigation ensures middleware sees the new session cookies
+      // router.push doesn't work reliably on mobile browsers
+      window.location.href = '/dashboard'
       return
     }
 
