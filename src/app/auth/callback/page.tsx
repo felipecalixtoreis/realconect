@@ -3,68 +3,52 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-/**
- * Auth callback page — handles Supabase email link redirects.
- *
- * Supabase password reset emails send tokens as URL hash fragments:
- *   /auth/callback#access_token=xxx&refresh_token=yyy&type=recovery
- *
- * Hash fragments are NOT sent to the server, so this must be a client-side page.
- * The Supabase client automatically picks up the tokens from the hash.
- */
 export default function AuthCallbackPage() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    const handleCallback = async () => {
-      const supabase = createClient()
+    const supabase = createClient()
 
-      // Check for hash params (password reset flow)
-      const hash = window.location.hash
-      if (hash && hash.includes('access_token')) {
-        // Supabase client auto-detects hash tokens and sets the session
-        // We just need to wait a moment for it to process
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // Listen for auth state changes — Supabase auto-detects hash fragment tokens
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, 'Session:', !!session)
 
-        if (sessionError || !session) {
-          // Try once more after a short delay
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          const { data: { session: retrySession } } = await supabase.auth.getSession()
-
-          if (retrySession) {
-            // Check if this is a recovery (password reset) flow
-            const isRecovery = hash.includes('type=recovery')
-            window.location.href = isRecovery ? '/set-password' : '/dashboard'
-            return
-          }
-
-          setError(true)
-          return
-        }
-
-        const isRecovery = hash.includes('type=recovery')
-        window.location.href = isRecovery ? '/set-password' : '/dashboard'
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked password reset link — redirect to set password page
+        window.location.href = '/set-password'
         return
       }
 
-      // Check for code param (PKCE flow)
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      const next = params.get('next') || '/dashboard'
-
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        if (!exchangeError) {
-          window.location.href = next
-          return
-        }
+      if (event === 'SIGNED_IN' && session) {
+        window.location.href = '/dashboard'
+        return
       }
+    })
 
-      // No valid auth params found
-      setError(true)
+    // Also check for PKCE code param
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
+        if (exchangeError) {
+          setError(true)
+        }
+        // If successful, onAuthStateChange will handle the redirect
+      })
     }
 
-    handleCallback()
+    // Timeout fallback — if nothing happens in 8 seconds, show error
+    const timeout = setTimeout(() => {
+      const hash = window.location.hash
+      if (!hash || !hash.includes('access_token')) {
+        setError(true)
+      }
+    }, 8000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   if (error) {
