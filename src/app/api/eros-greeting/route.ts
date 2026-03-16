@@ -42,6 +42,14 @@ export async function GET(request: NextRequest) {
 
     const admin = createAdminClient()
 
+    // Fetch admin context (personality profiles)
+    const { data: contextos } = await admin
+      .from('admin_context')
+      .select('contexto')
+      .or(`session_id.eq.${sessionId},user_id.eq.${user.id}`)
+
+    const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
+
     // Fetch accumulated history (responses + genie wishes) for richer greeting
     const historicoAcumulado = await buscarHistoricoAcumulado(admin, sessionId, user.id)
 
@@ -76,6 +84,7 @@ export async function GET(request: NextRequest) {
           etapa: r.etapa,
           resposta: r.resposta || '',
         })),
+        contextoAdmin,
         historicoAcumulado,
         historicoOutro,
       })
@@ -92,6 +101,7 @@ export async function GET(request: NextRequest) {
         etapa: r.etapa,
         resposta: r.resposta || '',
       })),
+      contextoAdmin,
       historicoAcumulado,
       historicoOutro,
     })

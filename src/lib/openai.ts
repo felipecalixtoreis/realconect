@@ -167,6 +167,8 @@ export async function chatComEros(
     historicoChat: Array<{ pergunta: string; resposta: string }>
     nomeUsuario: string
     nomeOutro?: string
+    contextoAdmin?: string
+    perfilOutro?: string
     historicoAcumulado?: HistoricoAcumulado
     historicoOutro?: HistoricoAcumulado
   }
@@ -223,7 +225,10 @@ Regras:
 - NUNCA use linguagem romântica apelativa como "chama entre vocês", "paixão ardente", "almas gêmeas", "destino amoroso"
 - O tom deve ser filosófico e misterioso, como um oráculo, não como um conselheiro sentimental
 - Pode mencionar conexão, mas de forma sutil — como quem fala sobre a gravidade entre dois astros, não sobre um casal
-${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
+
+${contexto.contextoAdmin ? `\nConhecimentos sobre ${primeiro} (use ativamente quando perguntarem sobre ${primeiro} ou para personalizar a conversa):\n${contexto.contextoAdmin}` : ''}
+
+${contexto.perfilOutro ? `\nConhecimentos sobre ${primeiroOutro} (use quando ${primeiro} perguntar sobre ${primeiroOutro} — responda como quem lê as estrelas, entrelaçando signo e personalidade):\n${contexto.perfilOutro}` : ''}${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
       },
       ...(historicoFormatado ? [{
         role: 'user' as const,
@@ -259,6 +264,7 @@ export async function gerarDicaEros(contexto: {
   perguntaEtapa: string
   nomeUsuario: string
   nomeOutro?: string
+  contextoAdmin?: string
   historicoAcumulado?: HistoricoAcumulado
   historicoOutro?: HistoricoAcumulado
 }): Promise<string> {
@@ -285,14 +291,15 @@ A dica deve:
 - Soar como um oráculo antigo que CONHECE ${primeiro} e fala diretamente sobre quem ele(a) é
 - NUNCA usar linguagem romântica explícita como "chama entre vocês", "amor", "paixão", "almas gêmeas"
 - Tratar ${primeiro} pelo nome, como quem já o(a) conhece há eras
-${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
+
+${contexto.contextoAdmin ? `\nConhecimentos sobre ${primeiro} (USE ATIVAMENTE para personalizar a dica — faça referências sutis à personalidade, interesses e padrões):\n${contexto.contextoAdmin}` : ''}${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
       },
       {
         role: 'user',
         content: `Etapa ${contexto.etapa}: "${contexto.tituloEtapa}"
 Pergunta que ${primeiro} precisa responder: "${contexto.perguntaEtapa}"
 
-Gere uma dica personalizada para ${primeiro} sobre como refletir para responder esta pergunta. Use EXCLUSIVAMENTE o que ${primeiro} já revelou nas respostas e desejos para personalizar.`
+Gere uma dica personalizada para ${primeiro} sobre como refletir para responder esta pergunta.`
       }
     ],
     temperature: 0.9,
@@ -310,6 +317,7 @@ export async function gerarSaudacaoEros(contexto: {
   etapaAtual: number
   totalRespondidas: number
   respostasAnteriores: Array<{ etapa: number; resposta: string }>
+  contextoAdmin?: string
   historicoAcumulado?: HistoricoAcumulado
   historicoOutro?: HistoricoAcumulado
 }): Promise<string> {
@@ -338,7 +346,8 @@ Gere uma saudação curta e impactante (3-5 frases) para ${primeiro} ao retornar
 - Terminar sempre com: "O experimento já começou antes do que você imagina."
 - Cada vez que ${primeiro} voltar, a saudação deve ser DIFERENTE e única
 - NUNCA repetir saudações anteriores
-${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
+
+${contexto.contextoAdmin ? `\nConhecimentos sobre os participantes (use sutilmente):\n${contexto.contextoAdmin}` : ''}${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
       },
       {
         role: 'user',

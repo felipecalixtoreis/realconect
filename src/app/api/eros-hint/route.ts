@@ -71,6 +71,12 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    // Get admin context
+    const { data: contextos } = await admin
+      .from('admin_context')
+      .select('contexto')
+      .or(`session_id.eq.${session_id},user_id.eq.${user.id}`)
+
     const etapaInfo = ETAPAS.find(e => e.numero === etapa)
 
     // Fetch accumulated history for richer, personalized hints
@@ -102,6 +108,7 @@ export async function POST(request: NextRequest) {
       perguntaEtapa: etapaInfo?.pergunta || '',
       nomeUsuario: profile?.nome || 'Participante',
       nomeOutro,
+      contextoAdmin: contextos?.map(c => c.contexto).join('\n') || undefined,
       historicoAcumulado,
       historicoOutro,
     })

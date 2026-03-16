@@ -122,6 +122,20 @@ export async function POST(request: NextRequest) {
 
     const outroUserId = session?.user1_id === user.id ? session?.user2_id : session?.user1_id
 
+    // Get admin contexts for both users
+    const { data: contextos } = await admin
+      .from('admin_context')
+      .select('contexto, user_id')
+      .or(`session_id.eq.${session_id},user_id.eq.${user.id},user_id.is.null`)
+
+    const { data: outroContextos } = outroUserId ? await admin
+      .from('admin_context')
+      .select('contexto')
+      .eq('user_id', outroUserId) : { data: [] }
+
+    const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
+    const perfilOutro = outroContextos?.map(c => c.contexto).join('\n') || undefined
+
     const etapaInfo = ETAPAS.find(e => e.numero === etapa)
 
     // Build chat history
@@ -145,6 +159,8 @@ export async function POST(request: NextRequest) {
       historicoChat: historico,
       nomeUsuario: profile?.nome || 'Participante',
       nomeOutro: outroProfile?.nome || 'o outro participante',
+      contextoAdmin,
+      perfilOutro,
       historicoAcumulado,
       historicoOutro: historicoOutro || undefined,
     })
