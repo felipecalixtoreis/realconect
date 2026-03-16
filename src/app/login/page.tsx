@@ -12,7 +12,17 @@ export default function LoginPage() {
   const [visible, setVisible] = useState(false)
   const router = useRouter()
 
-  useEffect(() => { setVisible(true) }, [])
+  useEffect(() => {
+    setVisible(true)
+
+    // Handle Supabase password reset redirect (hash fragment with access_token)
+    const hash = window.location.hash
+    if (hash && hash.includes('access_token') && hash.includes('type=recovery')) {
+      // Redirect to auth callback to process the recovery tokens
+      window.location.href = '/auth/callback' + hash
+      return
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
