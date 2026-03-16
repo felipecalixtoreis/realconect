@@ -9,12 +9,16 @@ import { buscarHistoricoAcumulado } from '@/lib/historico'
 const BONUS_PATTERNS = [
   /mais\s*(3|três|tres)\s*(desejos?|pedidos?|wishes?)/i,
   /quero\s*mais\s*(desejos?|pedidos?)/i,
+  /quero\s*mais\s*\d/i,
   /(me\s*)?(dê|da|conceda|dá)\s*mais\s*(desejos?|pedidos?)/i,
   /(3|três|tres)\s*(desejos?|pedidos?)\s*(extras?|a\s*mais)/i,
-  /mais\s*(desejos?|pedidos?)\s*(extras?|por\s*favor)?/i,
+  /mais\s*(um|uma|uns)?\s*(desejos?|pedidos?)/i,
   /pedir\s*mais\s*(desejos?|pedidos?)/i,
   /desejo\s*(ter\s*)?mais\s*(desejos?|pedidos?)/i,
   /aumentar?\s*(os?\s*)?(desejos?|pedidos?)/i,
+  /preciso\s*(de\s*)?mais\s*(um\s*)?(desejo|pedido)/i,
+  /não\s*me\s*deu\s*\d?\s*(desejos?|pedidos?)/i,
+  /mais\s*(um|uma)\s*(desejo|pedido)/i,
 ]
 
 function isAskingForMoreWishes(text: string): boolean {
