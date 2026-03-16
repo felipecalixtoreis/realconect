@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gerarSaudacaoEros } from '@/lib/openai'
+import { buscarHistoricoAcumulado } from '@/lib/historico'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,6 +49,9 @@ export async function GET(request: NextRequest) {
 
     const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
 
+    // Fetch accumulated history (responses + genie wishes) for richer greeting
+    const historicoAcumulado = await buscarHistoricoAcumulado(admin, sessionId, user.id)
+
     // All completed
     if (totalRespondidas >= 6) {
       const greeting = await gerarSaudacaoEros({
@@ -59,6 +63,7 @@ export async function GET(request: NextRequest) {
           resposta: r.resposta_texto || '',
         })),
         contextoAdmin,
+        historicoAcumulado,
       })
       return NextResponse.json({ greeting, dynamic: true })
     }
@@ -73,6 +78,7 @@ export async function GET(request: NextRequest) {
         resposta: r.resposta_texto || '',
       })),
       contextoAdmin,
+      historicoAcumulado,
     })
 
     return NextResponse.json({ greeting, dynamic: true })

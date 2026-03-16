@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { analisarCompatibilidade, sugerirAtividade } from '@/lib/openai'
+import { buscarHistoricoAcumulado } from '@/lib/historico'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,13 +29,34 @@ export async function POST(request: NextRequest) {
 
     const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
 
+    // Fetch accumulated history for both users for richer analysis
+    const [historicoUser1, historicoUser2] = await Promise.all([
+      body.user1_id ? buscarHistoricoAcumulado(adminClient, session_id, body.user1_id) : undefined,
+      body.user2_id ? buscarHistoricoAcumulado(adminClient, session_id, body.user2_id) : undefined,
+    ])
+
+    // Get user names for the history context
+    const { data: profiles } = await adminClient
+      .from('profiles')
+      .select('id, nome')
+      .in('id', [body.user1_id, body.user2_id].filter(Boolean))
+
+    const nomeUser1 = profiles?.find(p => p.id === body.user1_id)?.nome || 'Pessoa 1'
+    const nomeUser2 = profiles?.find(p => p.id === body.user2_id)?.nome || 'Pessoa 2'
+
     // Analyze compatibility
     const analise = await analisarCompatibilidade(
       resposta_user1,
       resposta_user2,
       etapa,
       tipo_indice,
-      contextoAdmin
+      contextoAdmin,
+      {
+        user1: historicoUser1,
+        user2: historicoUser2,
+        nomeUser1,
+        nomeUser2,
+      }
     )
 
     // Save index to database using admin client (bypasses RLS)

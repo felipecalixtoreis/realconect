@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { chatComEros } from '@/lib/openai'
 import { ETAPAS } from '@/lib/etapas'
+import { buscarHistoricoAcumulado } from '@/lib/historico'
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,6 +144,9 @@ export async function POST(request: NextRequest) {
       resposta: i.resposta,
     }))
 
+    // Fetch accumulated history for richer context
+    const historicoAcumulado = await buscarHistoricoAcumulado(admin, session_id, user.id)
+
     // Call Eros
     const respostaEros = await chatComEros(pergunta, {
       etapa,
@@ -154,6 +158,7 @@ export async function POST(request: NextRequest) {
       nomeOutro: outroProfile?.nome || 'o outro participante',
       contextoAdmin,
       perfilOutro,
+      historicoAcumulado,
     })
 
     // Save interaction

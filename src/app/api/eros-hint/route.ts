@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gerarDicaEros } from '@/lib/openai'
 import { ETAPAS } from '@/lib/etapas'
+import { buscarHistoricoAcumulado } from '@/lib/historico'
 
 export async function GET(request: NextRequest) {
   try {
@@ -78,12 +79,16 @@ export async function POST(request: NextRequest) {
 
     const etapaInfo = ETAPAS.find(e => e.numero === etapa)
 
+    // Fetch accumulated history for richer, personalized hints
+    const historicoAcumulado = await buscarHistoricoAcumulado(admin, session_id, user.id)
+
     const hintText = await gerarDicaEros({
       etapa,
       tituloEtapa: etapaInfo?.titulo || `Etapa ${etapa}`,
       perguntaEtapa: etapaInfo?.pergunta || '',
       nomeUsuario: profile?.nome || 'Participante',
       contextoAdmin: contextos?.map(c => c.contexto).join('\n') || undefined,
+      historicoAcumulado,
     })
 
     // Save hint
