@@ -155,14 +155,19 @@ export default function Home() {
               const isUnlocked = etapaAtual >= frag.etapaMinima
               const isFirst = frag.etapaMinima === 0
 
+              // Most recently unlocked fragment gets special highlight
+              const isLatestUnlock = isUnlocked && !isFirst && etapaAtual === frag.etapaMinima
+
               return (
                 <span
                   key={i}
                   className={`inline transition-all duration-700 ${
                     isUnlocked
                       ? isFirst
-                        ? 'text-gray-300'
-                        : 'text-white font-light'
+                        ? 'text-gray-400'
+                        : isLatestUnlock
+                          ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 font-medium'
+                          : 'text-gray-200 font-light'
                       : 'text-transparent select-none'
                   }`}
                   style={
