@@ -48,6 +48,13 @@ export default function AdminPage() {
 
   useEffect(() => { loadData(); loadEtapas(); loadHintOverrides() }, [])
 
+  // Auto-fill hint text when selecting a user+stage that already has an override
+  useEffect(() => {
+    if (!hintUser) return
+    const existing = hintOverrides.find(h => h.user_id === hintUser && h.etapa === hintEtapa)
+    setHintText(existing ? existing.hint_text : '')
+  }, [hintUser, hintEtapa, hintOverrides])
+
   const showMessage = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
     setMessage(msg)
     setMessageType(type)
@@ -637,7 +644,7 @@ export default function AdminPage() {
                     onChange={(e) => setHintEtapa(Number(e.target.value))}
                     className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-500/50 focus:outline-none"
                   >
-                    {ETAPAS.map(e => (
+                    {(etapasConfig.length > 0 ? etapasConfig : ETAPAS).map((e: any) => (
                       <option key={e.numero} value={e.numero}>Etapa {e.numero} — {e.titulo}</option>
                     ))}
                   </select>
@@ -647,9 +654,9 @@ export default function AdminPage() {
               {hintUser && (
                 <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
                   <p className="text-amber-400/70 text-xs font-semibold uppercase mb-1">Pergunta da Etapa {hintEtapa}:</p>
-                  <p className="text-gray-300 text-sm italic">{ETAPAS.find(e => e.numero === hintEtapa)?.pergunta}</p>
+                  <p className="text-gray-300 text-sm italic">{(etapasConfig.length > 0 ? etapasConfig : ETAPAS).find((e: any) => e.numero === hintEtapa)?.pergunta}</p>
                   {hintOverrides.find(h => h.user_id === hintUser && h.etapa === hintEtapa) && (
-                    <p className="text-amber-400 text-xs mt-2 font-medium">⚠ Já existe uma dica definida para esta combinação. Salvar irá substituí-la.</p>
+                    <p className="text-amber-400 text-xs mt-2 font-medium">⚠ Já existe uma dica definida. O texto atual está carregado abaixo para edição.</p>
                   )}
                 </div>
               )}
