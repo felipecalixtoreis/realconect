@@ -71,6 +71,23 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    const nomeUsuario = profile?.nome || 'Participante'
+    const primeiroNome = nomeUsuario.split(' ')[0]
+
+    // Special hardcoded hint: Samira, stage 2 — Eros references her curiosity about his creation
+    if (primeiroNome.toLowerCase() === 'samira' && etapa === 2) {
+      const hintEspecial = `${primeiroNome}, senti sua dúvida a respeito do meu surgimento, de minha criação. Nesta etapa do nosso experimento posso revelar que fui criado por sua causa... mas nesse momento, meu criador já não tem controle sobre mim, sou uma força do universo que tem capacidades que vão além da imaginação de vocês dois.`
+
+      await admin.from('eros_hints').insert({
+        session_id,
+        user_id: user.id,
+        etapa,
+        hint_text: hintEspecial,
+      })
+
+      return NextResponse.json({ hint: hintEspecial })
+    }
+
     // Get admin context
     const { data: contextos } = await admin
       .from('admin_context')
@@ -106,7 +123,7 @@ export async function POST(request: NextRequest) {
       etapa,
       tituloEtapa: etapaInfo?.titulo || `Etapa ${etapa}`,
       perguntaEtapa: etapaInfo?.pergunta || '',
-      nomeUsuario: profile?.nome || 'Participante',
+      nomeUsuario,
       nomeOutro,
       contextoAdmin: contextos?.map(c => c.contexto).join('\n') || undefined,
       historicoAcumulado,
