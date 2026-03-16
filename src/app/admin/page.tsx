@@ -26,6 +26,7 @@ export default function AdminPage() {
   // User management (email/password)
   const [userEdits, setUserEdits] = useState<Record<string, { email: string; password: string; nome: string }>>({})
   const [userSaving, setUserSaving] = useState<Record<string, boolean>>({})
+  const [resetSending, setResetSending] = useState<Record<string, boolean>>({})
 
   // Respond as user
   const [respondAsUser, setRespondAsUser] = useState('')
@@ -192,6 +193,20 @@ export default function AdminPage() {
     loadData()
   }
 
+  const handleSendResetLink = async (userId: string, email: string, nome: string) => {
+    if (!confirm(`Enviar link de criação de senha para ${nome} (${email})?`)) return
+    setResetSending(prev => ({ ...prev, [userId]: true }))
+
+    const res = await fetch('/api/admin/send-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await res.json()
+    showMessage(data.message || data.error, data.error ? 'error' : 'success')
+    setResetSending(prev => ({ ...prev, [userId]: false }))
+  }
+
   const handleSavePerfil = async (userId: string) => {
     const texto = perfilTextos[userId]?.trim()
     if (!texto) { showMessage('Escreva o perfil do participante', 'error'); return }
@@ -322,7 +337,14 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => handleSendResetLink(p.id, p.email, p.nome || 'Participante')}
+                      disabled={resetSending[p.id]}
+                      className="px-5 py-2 bg-amber-600/80 text-white rounded-xl hover:bg-amber-500 transition font-medium text-sm disabled:opacity-50"
+                    >
+                      {resetSending[p.id] ? 'Enviando...' : '📧 Enviar link para criar senha'}
+                    </button>
                     <button
                       onClick={() => handleUpdateUser(p.id)}
                       disabled={userSaving[p.id]}
