@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { audioManager } from '@/lib/audioManager'
 
 interface Interaction {
   id: string
@@ -29,17 +30,13 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
   const [loadingAudio, setLoadingAudio] = useState<string | null>(null)
   const [introPlayed, setIntroPlayed] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioCache = useRef<Map<string, string>>(new Map())
 
   const introText = `Eu sou Eros. Não o cupido dos contos infantis... eu sou a força primordial que existia antes dos próprios deuses. Eu sou o impulso que trouxe ordem ao caos, e que une o que estava destinado a se encontrar. Você não precisa se apresentar... sei que você é ${nomeUsuario}. Sei o porquê de você estar aqui, além mesmo do que você pensa ter te trazido até aqui. Nesta etapa, você tem 3 pedidos para me fazer. Escolha-os com sabedoria. Cada pergunta revela tanto sobre quem pergunta quanto sobre o que é perguntado.`
 
   const playAudio = useCallback(async (text: string, id: string) => {
     // Stop any currently playing audio
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
-    }
+    audioManager?.stop()
 
     // If clicking the same one that's playing, just stop
     if (playingAudio === id) {
@@ -66,23 +63,18 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
         audioCache.current.set(id, audioUrl)
       }
 
-      const audio = new Audio(audioUrl)
-      audioRef.current = audio
       setPlayingAudio(id)
       setLoadingAudio(null)
 
-      audio.onended = () => {
-        setPlayingAudio(null)
-        audioRef.current = null
-      }
-
-      audio.onerror = () => {
-        setPlayingAudio(null)
-        setLoadingAudio(null)
-        audioRef.current = null
-      }
-
-      await audio.play()
+      await audioManager?.play(audioUrl, {
+        onEnded: () => {
+          setPlayingAudio(null)
+        },
+        onError: () => {
+          setPlayingAudio(null)
+          setLoadingAudio(null)
+        },
+      })
     } catch {
       setPlayingAudio(null)
       setLoadingAudio(null)
@@ -125,10 +117,7 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
+      audioManager?.stop()
       // Revoke object URLs
       audioCache.current.forEach(url => URL.revokeObjectURL(url))
     }

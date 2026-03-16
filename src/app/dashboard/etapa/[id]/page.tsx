@@ -9,6 +9,7 @@ import { OracleOfEros } from '@/components/OracleOfEros'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { GenieChat } from '@/components/GenieChat'
 import { ErosFloatingHint } from '@/components/ErosFloatingHint'
+import { audioManager } from '@/lib/audioManager'
 
 export default function EtapaPage() {
   const params = useParams()
@@ -45,13 +46,12 @@ export default function EtapaPage() {
       if (!res.ok) return
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audioAnuncioRef.current = audio
-      audio.onended = () => {
-        audioAnuncioRef.current = null
-        URL.revokeObjectURL(url)
-      }
-      await audio.play()
+
+      await audioManager?.play(url, {
+        onEnded: () => {
+          URL.revokeObjectURL(url)
+        },
+      })
     } catch {
       // TTS failed silently
     }

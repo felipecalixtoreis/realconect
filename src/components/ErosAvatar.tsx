@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { audioManager } from '@/lib/audioManager'
 
 interface ErosAvatarProps {
   nomeUsuario: string
@@ -17,7 +18,6 @@ export function ErosAvatar({ nomeUsuario, etapaAtual, totalRespondidas, sessionI
   const [mounted, setMounted] = useState(false)
   const [greetingText, setGreetingText] = useState<string | null>(null)
   const [greetingLoading, setGreetingLoading] = useState(true)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioBlobUrl = useRef<string | null>(null)
   const hasAutoPlayed = useRef(false)
 
@@ -62,10 +62,8 @@ export function ErosAvatar({ nomeUsuario, etapaAtual, totalRespondidas, sessionI
   const playVoice = useCallback(async () => {
     if (!greetingText) return
 
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
-    }
+    // Stop any currently playing audio
+    audioManager?.stop()
 
     setAudioLoading(true)
     setShowRepeat(false)
@@ -85,25 +83,20 @@ export function ErosAvatar({ nomeUsuario, etapaAtual, totalRespondidas, sessionI
         audioBlobUrl.current = url
       }
 
-      const audio = new Audio(url)
-      audioRef.current = audio
       setIsSpeaking(true)
       setAudioLoading(false)
 
-      audio.onended = () => {
-        setIsSpeaking(false)
-        setShowRepeat(true)
-        audioRef.current = null
-      }
-
-      audio.onerror = () => {
-        setIsSpeaking(false)
-        setAudioLoading(false)
-        setShowRepeat(true)
-        audioRef.current = null
-      }
-
-      await audio.play()
+      await audioManager?.play(url, {
+        onEnded: () => {
+          setIsSpeaking(false)
+          setShowRepeat(true)
+        },
+        onError: () => {
+          setIsSpeaking(false)
+          setAudioLoading(false)
+          setShowRepeat(true)
+        },
+      })
     } catch {
       setIsSpeaking(false)
       setAudioLoading(false)
@@ -129,10 +122,7 @@ export function ErosAvatar({ nomeUsuario, etapaAtual, totalRespondidas, sessionI
   // Cleanup
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
+      audioManager?.stop()
       if (audioBlobUrl.current) {
         URL.revokeObjectURL(audioBlobUrl.current)
       }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { audioManager } from '@/lib/audioManager'
 
 interface ErosFloatingHintProps {
   sessionId: string
@@ -16,7 +17,6 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   const [showRepeat, setShowRepeat] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioBlobUrl = useRef<string | null>(null)
 
   // Check if hint was already used
@@ -39,10 +39,8 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   }, [sessionId, etapa])
 
   const playAudio = useCallback(async (text: string) => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
-    }
+    // Stop any currently playing audio
+    audioManager?.stop()
 
     setAudioLoading(true)
     setShowRepeat(false)
@@ -62,25 +60,20 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
         audioBlobUrl.current = url
       }
 
-      const audio = new Audio(url)
-      audioRef.current = audio
       setIsSpeaking(true)
       setAudioLoading(false)
 
-      audio.onended = () => {
-        setIsSpeaking(false)
-        setShowRepeat(true)
-        audioRef.current = null
-      }
-
-      audio.onerror = () => {
-        setIsSpeaking(false)
-        setAudioLoading(false)
-        setShowRepeat(true)
-        audioRef.current = null
-      }
-
-      await audio.play()
+      await audioManager?.play(url, {
+        onEnded: () => {
+          setIsSpeaking(false)
+          setShowRepeat(true)
+        },
+        onError: () => {
+          setIsSpeaking(false)
+          setAudioLoading(false)
+          setShowRepeat(true)
+        },
+      })
     } catch {
       setIsSpeaking(false)
       setAudioLoading(false)
@@ -91,10 +84,7 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   const handleClick = async () => {
     // If already speaking, pause
     if (isSpeaking) {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
+      audioManager?.stop()
       setIsSpeaking(false)
       setShowRepeat(true)
       return
@@ -130,10 +120,6 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   // Cleanup
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
       if (audioBlobUrl.current) {
         URL.revokeObjectURL(audioBlobUrl.current)
       }
