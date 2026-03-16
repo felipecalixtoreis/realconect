@@ -33,6 +33,7 @@ export default function EtapaPage() {
   const [tresDesejosPlayed, setTresDesejosPlayed] = useState(false)
   const [mostrarPerguntaAutorizacao, setMostrarPerguntaAutorizacao] = useState(false)
   const [jaAutorizou, setJaAutorizou] = useState<boolean | null>(null)
+  const [minhaResposta, setMinhaResposta] = useState<string | null>(null)
   const audioAnuncioRef = useRef<HTMLAudioElement | null>(null)
 
   const playAnuncioDesejos = useCallback(async (nome: string) => {
@@ -100,15 +101,16 @@ export default function EtapaPage() {
         return
       }
 
-      const minhaResposta = minhasRespostas.find(
+      const minhaRespostaData = minhasRespostas.find(
         (r: any) => r.etapa === etapaNumero
       )
-      if (minhaResposta) {
+      if (minhaRespostaData) {
         setJaRespondeu(true)
+        setMinhaResposta(minhaRespostaData.resposta)
         // Check if user already made authorization decision
-        if (minhaResposta.autorizar_exibicao === true) {
+        if (minhaRespostaData.autorizar_exibicao === true) {
           setJaAutorizou(true)
-        } else if (minhaResposta.autorizar_exibicao === false) {
+        } else if (minhaRespostaData.autorizar_exibicao === false) {
           setJaAutorizou(false)
         }
       }
@@ -249,6 +251,38 @@ export default function EtapaPage() {
           </div>
         )}
 
+        {/* Minha resposta + toggle de autorização */}
+        {minhaResposta && (
+          <div className={`bg-slate-800/50 border border-indigo-500/20 rounded-2xl p-6 transition-all duration-500 delay-200 ${
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+          }`}>
+            <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
+              Sua resposta
+            </p>
+            <p className="text-gray-300 italic mb-4">&ldquo;{minhaResposta}&rdquo;</p>
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-700/50">
+              <button
+                onClick={() => handleAutorizacao(!jaAutorizou)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  jaAutorizou ? 'bg-emerald-600' : 'bg-slate-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    jaAutorizou ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span className="text-sm text-gray-400">
+                {jaAutorizou
+                  ? 'Outro participante pode ver sua resposta'
+                  : 'Sua resposta está oculta para o outro participante'
+                }
+              </span>
+            </div>
+          </div>
+        )}
+
         {respostaOutro && (
           <div className={`bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 transition-all duration-500 delay-300 ${
             visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
@@ -375,6 +409,37 @@ export default function EtapaPage() {
           <p className="text-gray-400 max-w-md mx-auto">
             Aguardando o outro participante responder para gerar a análise de compatibilidade.
           </p>
+
+          {/* Minha resposta + toggle de autorização */}
+          {minhaResposta && (
+            <div className="bg-slate-800/50 border border-indigo-500/20 rounded-2xl p-6 text-left mt-6">
+              <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                Sua resposta
+              </p>
+              <p className="text-gray-300 italic mb-4">&ldquo;{minhaResposta}&rdquo;</p>
+              <div className="flex items-center gap-3 pt-2 border-t border-slate-700/50">
+                <button
+                  onClick={() => handleAutorizacao(!jaAutorizou)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    jaAutorizou ? 'bg-emerald-600' : 'bg-slate-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      jaAutorizou ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-gray-400">
+                  {jaAutorizou
+                    ? 'Outro participante pode ver sua resposta'
+                    : 'Sua resposta está oculta para o outro participante'
+                  }
+                </span>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => router.push('/dashboard')}
             className="mt-8 px-6 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition"
