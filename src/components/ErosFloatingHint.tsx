@@ -17,7 +17,11 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   const [showRepeat, setShowRepeat] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [hasHeardOnce, setHasHeardOnce] = useState(false)
   const audioBlobUrl = useRef<string | null>(null)
+  const repeatAudioUrl = useRef<string | null>(null)
+
+  const REPEAT_MESSAGE = 'A dica já foi dada, agora você precisa ter coragem e responder com o que vem ao seu coração.'
 
   // Check if hint was already used
   useEffect(() => {
@@ -29,6 +33,7 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
           setHintUsed(true)
           setHintText(data.hint)
           setShowRepeat(true)
+          setHasHeardOnce(true)
         }
       } catch {
         // ignore
@@ -38,7 +43,7 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
     check()
   }, [sessionId, etapa])
 
-  const playAudio = useCallback(async (text: string) => {
+  const playAudio = useCallback(async (text: string, isRepeat = false) => {
     // Stop any currently playing audio
     audioManager?.stop()
 
@@ -46,7 +51,8 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
     setShowRepeat(false)
 
     try {
-      let url = audioBlobUrl.current
+      const urlRef = isRepeat ? repeatAudioUrl : audioBlobUrl
+      let url = urlRef.current
 
       if (!url) {
         const res = await fetch('/api/tts', {
@@ -57,7 +63,7 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
         if (!res.ok) throw new Error('TTS failed')
         const blob = await res.blob()
         url = URL.createObjectURL(blob)
-        audioBlobUrl.current = url
+        urlRef.current = url
       }
 
       setIsSpeaking(true)
@@ -90,9 +96,16 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
       return
     }
 
-    // If hint was used and we have text, replay
+    // If hint was used and we have text
     if (hintUsed && hintText) {
-      playAudio(hintText)
+      if (hasHeardOnce) {
+        // Second+ click: play encouragement message
+        playAudio(REPEAT_MESSAGE, true)
+      } else {
+        // First replay: play original hint again
+        setHasHeardOnce(true)
+        playAudio(hintText)
+      }
       return
     }
 
@@ -109,6 +122,7 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
         if (data.hint) {
           setHintText(data.hint)
           setHintUsed(true)
+          setHasHeardOnce(true)
           playAudio(data.hint)
         }
       } catch {
@@ -120,9 +134,8 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   // Cleanup
   useEffect(() => {
     return () => {
-      if (audioBlobUrl.current) {
-        URL.revokeObjectURL(audioBlobUrl.current)
-      }
+      if (audioBlobUrl.current) URL.revokeObjectURL(audioBlobUrl.current)
+      if (repeatAudioUrl.current) URL.revokeObjectURL(repeatAudioUrl.current)
     }
   }, [])
 
@@ -134,7 +147,7 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
       {showTooltip && !isSpeaking && !audioLoading && (
         <div className="animate-fadeIn bg-indigo-950/90 border border-indigo-500/30 rounded-xl px-4 py-2 text-xs text-indigo-200 max-w-[180px] text-center backdrop-blur-sm">
           {hintUsed
-            ? 'Ouvir dica novamente'
+            ? 'Consultar Eros'
             : 'Pedir uma dica a Eros'}
         </div>
       )}
