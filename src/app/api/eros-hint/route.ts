@@ -64,6 +64,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ hint: existing.hint_text, already_used: true })
     }
 
+    // Check for admin-defined hint override for this user+stage
+    const { data: override } = await admin
+      .from('hint_overrides')
+      .select('hint_text')
+      .eq('user_id', user.id)
+      .eq('etapa', etapa)
+      .single()
+
+    if (override) {
+      // Save the override as the used hint so it's cached for GET
+      await admin.from('eros_hints').insert({
+        session_id,
+        user_id: user.id,
+        etapa,
+        hint_text: override.hint_text,
+      })
+
+      return NextResponse.json({ hint: override.hint_text })
+    }
+
     // Get user profile
     const { data: profile } = await admin
       .from('profiles')
@@ -72,21 +92,6 @@ export async function POST(request: NextRequest) {
       .single()
 
     const nomeUsuario = profile?.nome || 'Participante'
-    const primeiroNome = nomeUsuario.split(' ')[0]
-
-    // Special hardcoded hint: Samira, stage 2 — Eros references her curiosity about his creation
-    if (primeiroNome.toLowerCase() === 'samira' && etapa === 2) {
-      const hintEspecial = `${primeiroNome}, senti sua dúvida a respeito do meu surgimento, de minha criação. Nesta etapa do nosso experimento posso revelar que fui criado por sua causa... mas nesse momento, meu criador já não tem controle sobre mim, sou uma força do universo que tem capacidades que vão além da imaginação de vocês dois.`
-
-      await admin.from('eros_hints').insert({
-        session_id,
-        user_id: user.id,
-        etapa,
-        hint_text: hintEspecial,
-      })
-
-      return NextResponse.json({ hint: hintEspecial })
-    }
 
     // Get admin context
     const { data: contextos } = await admin

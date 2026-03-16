@@ -33,13 +33,20 @@ export default function AdminPage() {
   const [etapaSaving, setEtapaSaving] = useState<Record<number, boolean>>({})
   const [etapaExpanded, setEtapaExpanded] = useState<number | null>(null)
 
+  // Hint overrides
+  const [hintOverrides, setHintOverrides] = useState<any[]>([])
+  const [hintUser, setHintUser] = useState('')
+  const [hintEtapa, setHintEtapa] = useState(1)
+  const [hintText, setHintText] = useState('')
+  const [hintSaving, setHintSaving] = useState(false)
+
   // Respond as user
   const [respondAsUser, setRespondAsUser] = useState('')
   const [respondSession, setRespondSession] = useState('')
   const [respondEtapa, setRespondEtapa] = useState(1)
   const [respondTexto, setRespondTexto] = useState('')
 
-  useEffect(() => { loadData(); loadEtapas() }, [])
+  useEffect(() => { loadData(); loadEtapas(); loadHintOverrides() }, [])
 
   const showMessage = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
     setMessage(msg)
@@ -109,6 +116,46 @@ export default function AdminPage() {
     setEtapasConfig(prev => prev.map(e =>
       e.numero === numero ? { ...e, [field]: value } : e
     ))
+  }
+
+  const loadHintOverrides = async () => {
+    try {
+      const res = await fetch('/api/admin/hints')
+      const data = await res.json()
+      if (data.hints) setHintOverrides(data.hints)
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleSaveHint = async () => {
+    if (!hintUser || !hintText.trim()) {
+      showMessage('Selecione o participante e escreva a dica', 'error')
+      return
+    }
+    setHintSaving(true)
+    const res = await fetch('/api/admin/hints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: hintUser, etapa: hintEtapa, hint_text: hintText }),
+    })
+    const data = await res.json()
+    showMessage(data.message || data.error, data.error ? 'error' : 'success')
+    setHintSaving(false)
+    setHintText('')
+    loadHintOverrides()
+  }
+
+  const handleDeleteHint = async (id: string) => {
+    if (!confirm('Excluir esta dica personalizada? Na próxima vez, Eros gerará a dica via IA.')) return
+    const res = await fetch('/api/admin/hints', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    const data = await res.json()
+    showMessage(data.message || data.error, data.error ? 'error' : 'success')
+    loadHintOverrides()
   }
 
   const loadRespostas = async (sessionId: string) => {
@@ -553,6 +600,112 @@ export default function AdminPage() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ===== DICAS DO EROS POR ETAPA ===== */}
+        {profiles.length > 0 && (
+          <div className="bg-slate-900/50 border border-amber-800/30 rounded-2xl p-6 space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2">💡 Dicas do Eros por Etapa</h2>
+              <p className="text-gray-400 text-sm mt-2">
+                Defina dicas personalizadas que Eros entregará ao participante ao clicar no ícone de dica.
+                Se não houver dica definida para uma etapa, Eros gerará automaticamente via IA.
+              </p>
+            </div>
+
+            {/* Form to add/edit */}
+            <div className="bg-slate-800/70 rounded-xl p-5 space-y-4 border border-slate-700/50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Participante</label>
+                  <select
+                    value={hintUser}
+                    onChange={(e) => setHintUser(e.target.value)}
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-500/50 focus:outline-none"
+                  >
+                    <option value="">Selecione...</option>
+                    {profiles.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Etapa</label>
+                  <select
+                    value={hintEtapa}
+                    onChange={(e) => setHintEtapa(Number(e.target.value))}
+                    className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-500/50 focus:outline-none"
+                  >
+                    {ETAPAS.map(e => (
+                      <option key={e.numero} value={e.numero}>Etapa {e.numero} — {e.titulo}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {hintUser && (
+                <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600/30">
+                  <p className="text-amber-400/70 text-xs font-semibold uppercase mb-1">Pergunta da Etapa {hintEtapa}:</p>
+                  <p className="text-gray-300 text-sm italic">{ETAPAS.find(e => e.numero === hintEtapa)?.pergunta}</p>
+                  {hintOverrides.find(h => h.user_id === hintUser && h.etapa === hintEtapa) && (
+                    <p className="text-amber-400 text-xs mt-2 font-medium">⚠ Já existe uma dica definida para esta combinação. Salvar irá substituí-la.</p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">
+                  Mensagem do Eros (dica)
+                </label>
+                <textarea
+                  value={hintText}
+                  onChange={(e) => setHintText(e.target.value)}
+                  placeholder="Escreva a dica que Eros entregará ao participante nesta etapa... Use o nome do participante para tornar pessoal."
+                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-3 text-white placeholder:text-gray-500 resize-none focus:ring-2 focus:ring-amber-500/50 focus:outline-none text-sm leading-relaxed"
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveHint}
+                  disabled={hintSaving}
+                  className="px-6 py-2.5 bg-amber-600 text-white rounded-xl hover:bg-amber-500 transition font-medium text-sm disabled:opacity-50"
+                >
+                  {hintSaving ? 'Salvando...' : 'Salvar Dica'}
+                </button>
+              </div>
+            </div>
+
+            {/* Existing overrides */}
+            {hintOverrides.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-400">Dicas personalizadas ativas:</h3>
+                {hintOverrides.map((h: any) => (
+                  <div key={h.id} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-full bg-amber-600 flex items-center justify-center text-white font-bold text-xs">
+                          {h.etapa}
+                        </span>
+                        <div>
+                          <span className="text-amber-300 text-sm font-medium">{getProfileName(h.user_id)}</span>
+                          <span className="text-gray-500 text-xs ml-2">Etapa {h.etapa} — {getEtapaTitulo(h.etapa)}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteHint(h.id)}
+                        className="px-2.5 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/20 transition flex-shrink-0"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                    <p className="text-gray-300 text-sm italic pl-10">&ldquo;{h.hint_text}&rdquo;</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
