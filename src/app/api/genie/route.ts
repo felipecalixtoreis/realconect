@@ -22,7 +22,7 @@ function isAskingForMoreWishes(text: string): boolean {
 }
 
 // ── Mensagem especial do Eros ao conceder bônus ──────────────────────
-const BONUS_EROS_MESSAGE = `Esta foi a única vez que irei permitir que você tome atalhos para obter sabedoria, não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro?! Então agora, antes de conceder os seus desejos extras, quem pergunta sou eu! Você está conseguindo perceber Samira? Acha que está pronta para o que pode acontecer e sei que já pensou nisso?`
+const BONUS_EROS_MESSAGE = `Esta foi a única vez que irei permitir que você tome atalhos para obter sabedoria, não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro?! Então agora, antes de conceder um desejo extra, quem pergunta agora sou eu! Você está conseguindo perceber Samira? Acha que está pronta para o que pode acontecer?  E olha... eu sei que já pensou nisso!`
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       .single()
 
     const bonusActiveThisStage = bonus?.etapa === Number(etapa)
-    const maxWishes = bonusActiveThisStage ? 6 : 3
+    const maxWishes = bonusActiveThisStage ? 4 : 3
     const count = interactions?.length || 0
 
     return NextResponse.json({
@@ -112,12 +112,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     const bonusActiveThisStage = bonusRecord?.etapa === etapa
-    const maxWishes = bonusActiveThisStage ? 6 : 3
+    const maxWishes = bonusActiveThisStage ? 4 : 3
 
     if (count >= maxWishes) {
       return NextResponse.json({
         error: bonusActiveThisStage
-          ? 'Você já usou todos os seus 6 pedidos nesta etapa.'
+          ? 'Você já usou todos os seus 4 pedidos nesta etapa.'
           : 'Você já usou seus 3 pedidos com Eros nesta etapa.',
         remaining: 0,
       }, { status: 429 })
@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
           etapa,
         })
 
-        // Agora o max é 6 para esta etapa
-        const newMax = 6
+        // Agora o max é 4 para esta etapa (3 + 1 extra)
+        const newMax = 4
 
         return NextResponse.json({
           interaction: saved,

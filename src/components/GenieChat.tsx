@@ -366,7 +366,7 @@ export function GenieChat({ sessionId, etapa, jaRespondeu, nomeUsuario, autoExpa
             <div className="border-t border-indigo-500/20 p-4 text-center">
               <p className="text-indigo-400/60 text-sm italic">
                 {maxWishes > 3
-                  ? 'Seus 6 pedidos (incluindo os bônus) foram utilizados nesta etapa. Eros aguarda na próxima jornada.'
+                  ? 'Seus pedidos (incluindo o bônus) foram utilizados nesta etapa. Eros aguarda na próxima jornada.'
                   : 'Seus 3 pedidos foram utilizados nesta etapa. Eros aguarda na próxima jornada.'}
               </p>
             </div>

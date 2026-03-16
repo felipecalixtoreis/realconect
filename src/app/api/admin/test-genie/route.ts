@@ -20,7 +20,7 @@ function isAskingForMoreWishes(text: string): boolean {
   return BONUS_PATTERNS.some(p => p.test(text))
 }
 
-const BONUS_EROS_MESSAGE = `Esta foi a única vez que irei permitir que você tome atalhos para obter sabedoria, não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro?! Então agora, antes de conceder os seus desejos extras, quem pergunta sou eu! Você está conseguindo perceber Samira? Acha que está pronta para o que pode acontecer e sei que já pensou nisso?`
+const BONUS_EROS_MESSAGE = `Esta foi a única vez que irei permitir que você tome atalhos para obter sabedoria, não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro?! Então agora, antes de conceder um desejo extra, quem pergunta agora sou eu! Você está conseguindo perceber Samira? Acha que está pronta para o que pode acontecer?  E olha... eu sei que já pensou nisso!`
 
 /**
  * POST /api/admin/test-genie
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
         bonus_just_granted: true,
         detected_bonus_request: true,
         interaction_number: count + 1,
-        remaining: 6 - (count + 1),
-        max_wishes: 6,
+        remaining: 4 - (count + 1),
+        max_wishes: 4,
       })
     }
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       historicoOutro: historicoOutro || undefined,
     })
 
-    const maxWishes = bonus_already_granted ? 6 : 3
+    const maxWishes = bonus_already_granted ? 4 : 3
 
     return NextResponse.json({
       resposta: respostaEros,

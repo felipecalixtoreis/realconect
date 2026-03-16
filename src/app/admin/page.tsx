@@ -407,7 +407,7 @@ export default function AdminPage() {
         setTestGeniePergunta('')
         if (data.bonus_just_granted) {
           setTestGenieBonusGranted(true)
-          setTestGenieMaxWishes(6)
+          setTestGenieMaxWishes(4)
         }
         if (data.max_wishes) setTestGenieMaxWishes(data.max_wishes)
         // Auto-play audio
