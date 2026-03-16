@@ -7,6 +7,7 @@ import { ETAPAS } from '@/lib/etapas'
 import { Timeline } from '@/components/Timeline'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { ErosAvatar } from '@/components/ErosAvatar'
+import { CountdownTimer, isEtapaBloqueadaPorTempo } from '@/components/CountdownTimer'
 
 interface SessionData {
   session: any
@@ -21,6 +22,8 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [visible, setVisible] = useState(false)
+  const [ultimaRespostaCriadoEm, setUltimaRespostaCriadoEm] = useState<string | null>(null)
+  const [etapaBloqueada, setEtapaBloqueada] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -39,6 +42,21 @@ export default function DashboardPage() {
           setNomeUsuario(sessionData.session.user1.nome || 'Participante')
         } else if (sessionData.session.user2?.id === user.id) {
           setNomeUsuario(sessionData.session.user2.nome || 'Participante')
+        }
+      }
+
+      // Calculate time lock based on user's last response
+      if (sessionData.respostas && user) {
+        const minhasResps = sessionData.respostas.filter((r: any) => r.user_id === user.id)
+        if (minhasResps.length > 0) {
+          // Find the most recent response
+          const maisRecente = minhasResps.reduce((a: any, b: any) =>
+            new Date(a.criado_em) > new Date(b.criado_em) ? a : b
+          )
+          setUltimaRespostaCriadoEm(maisRecente.criado_em)
+          // Check if next stage is time-locked
+          const bloqueada = isEtapaBloqueadaPorTempo(maisRecente.criado_em)
+          setEtapaBloqueada(bloqueada)
         }
       }
 
@@ -114,6 +132,7 @@ export default function DashboardPage() {
           const respondida = etapasCompletasPorMim.includes(etapa.numero)
           const temIndice = indices.find(i => i.etapa === etapa.numero)
           const isProxima = etapa.numero === proximaEtapa
+          const isBloqueadaTempo = isProxima && !respondida && etapaBloqueada
 
           return (
             <div
@@ -126,10 +145,13 @@ export default function DashboardPage() {
               }}
             >
               <button
-                onClick={() => router.push(`/dashboard/etapa/${etapa.numero}`)}
+                onClick={() => !isBloqueadaTempo && router.push(`/dashboard/etapa/${etapa.numero}`)}
+                disabled={isBloqueadaTempo}
                 className={`w-full text-left p-4 sm:p-6 rounded-2xl border transition-all ${
                   respondida
                     ? 'bg-purple-500/10 border-purple-500/30 hover:border-purple-500/50'
+                    : isBloqueadaTempo
+                    ? 'bg-slate-900/40 border-slate-700/30 opacity-60 cursor-not-allowed'
                     : 'bg-gradient-to-r from-slate-900/80 to-indigo-950/40 border-indigo-500/30 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/10'
                 }`}
               >
@@ -137,22 +159,30 @@ export default function DashboardPage() {
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-base sm:text-lg font-bold flex-shrink-0 ${
                     respondida
                       ? 'bg-purple-500 text-white'
+                      : isBloqueadaTempo
+                      ? 'bg-slate-700 text-slate-400'
                       : 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white animate-pulse'
                   }`}>
-                    {respondida ? '✓' : etapa.numero}
+                    {respondida ? '✓' : isBloqueadaTempo ? '🔒' : etapa.numero}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider">{etapa.subtitulo}</p>
-                    <h3 className="text-white font-semibold text-base sm:text-lg truncate">{etapa.titulo}</h3>
+                    <h3 className={`font-semibold text-base sm:text-lg truncate ${isBloqueadaTempo ? 'text-gray-500' : 'text-white'}`}>{etapa.titulo}</h3>
                     {temIndice && (
                       <p className="text-purple-400 text-xs sm:text-sm mt-1">Conexão: {temIndice.compatibilidade}%</p>
                     )}
-                    {isProxima && !respondida && (
+                    {isProxima && !respondida && !isBloqueadaTempo && (
                       <p className="text-indigo-400 text-xs sm:text-sm mt-1 italic">Disponível agora</p>
                     )}
+                    {isBloqueadaTempo && (
+                      <p className="text-amber-400/60 text-xs sm:text-sm mt-1 italic">Aguardando liberação às 20h</p>
+                    )}
                   </div>
-                  {isProxima && !respondida && (
+                  {isProxima && !respondida && !isBloqueadaTempo && (
                     <span className="text-indigo-400 text-xl sm:text-2xl animate-pulse flex-shrink-0">→</span>
+                  )}
+                  {isBloqueadaTempo && (
+                    <span className="text-amber-400/40 text-lg flex-shrink-0">🔒</span>
                   )}
                   {respondida && (
                     <span className="text-purple-500/50 text-xs sm:text-sm flex-shrink-0">Ver</span>
@@ -164,27 +194,36 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* 24h unlock explanation */}
+      {/* Countdown timer or explanation */}
       {etapasCompletasPorMim.length > 0 && etapasCompletasPorMim.length < 6 && (
         <div className={`transition-all duration-700 delay-400 ${
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
         }`}>
-          <div className="bg-indigo-950/30 border border-indigo-500/15 rounded-2xl p-5 sm:p-6">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg className="w-5 h-5 text-indigo-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-indigo-300/90 text-sm font-semibold mb-1.5">Por que uma etapa por dia?</h4>
-                <p className="text-indigo-200/50 text-xs sm:text-sm leading-relaxed">
-                  A próxima etapa será liberada 24 horas após a sua última resposta. Cada sílaba, cada palavra e cada frase possui um significado e um objetivo. Deixe o tempo trabalhar por você.
-                  <span className="text-indigo-400/60 italic"> Reflita.</span>
-                </p>
+          {etapaBloqueada && ultimaRespostaCriadoEm ? (
+            <CountdownTimer
+              ultimaRespostaCriadoEm={ultimaRespostaCriadoEm}
+              onUnlocked={() => {
+                setEtapaBloqueada(false)
+              }}
+            />
+          ) : (
+            <div className="bg-indigo-950/30 border border-indigo-500/15 rounded-2xl p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-5 h-5 text-indigo-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-indigo-300/90 text-sm font-semibold mb-1.5">Por que uma etapa por dia?</h4>
+                  <p className="text-indigo-200/50 text-xs sm:text-sm leading-relaxed">
+                    Cada etapa é liberada às 20h. Cada sílaba, cada palavra e cada frase possui um significado e um objetivo. Deixe o tempo trabalhar por você.
+                    <span className="text-indigo-400/60 italic"> Reflita.</span>
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

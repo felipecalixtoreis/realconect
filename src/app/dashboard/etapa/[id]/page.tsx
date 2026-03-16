@@ -9,6 +9,7 @@ import { OracleOfEros } from '@/components/OracleOfEros'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { GenieChat } from '@/components/GenieChat'
 import { ErosFloatingHint } from '@/components/ErosFloatingHint'
+import { CountdownTimer, isEtapaBloqueadaPorTempo } from '@/components/CountdownTimer'
 import { audioManager } from '@/lib/audioManager'
 
 export default function EtapaPage() {
@@ -34,6 +35,8 @@ export default function EtapaPage() {
   const [mostrarPerguntaAutorizacao, setMostrarPerguntaAutorizacao] = useState(false)
   const [jaAutorizou, setJaAutorizou] = useState<boolean | null>(null)
   const [minhaResposta, setMinhaResposta] = useState<string | null>(null)
+  const [etapaBloqueadaTempo, setEtapaBloqueadaTempo] = useState(false)
+  const [ultimaRespostaCriadoEm, setUltimaRespostaCriadoEm] = useState<string | null>(null)
   const audioAnuncioRef = useRef<HTMLAudioElement | null>(null)
 
   const playAnuncioDesejos = useCallback(async (nome: string) => {
@@ -111,6 +114,17 @@ export default function EtapaPage() {
       if (!jaRespondeuEstaEtapa && etapaNumero > data.session.etapa_atual) {
         router.push('/dashboard')
         return
+      }
+
+      // Check time lock — next stage only available after 20:00
+      if (!jaRespondeuEstaEtapa && minhasRespostas.length > 0) {
+        const maisRecente = minhasRespostas.reduce((a: any, b: any) =>
+          new Date(a.criado_em) > new Date(b.criado_em) ? a : b
+        )
+        if (isEtapaBloqueadaPorTempo(maisRecente.criado_em)) {
+          setEtapaBloqueadaTempo(true)
+          setUltimaRespostaCriadoEm(maisRecente.criado_em)
+        }
       }
 
       const minhaRespostaData = minhasRespostas.find(
@@ -470,6 +484,39 @@ export default function EtapaPage() {
             autoExpand={tresDesejosPlayed}
           />
         )}
+      </div>
+    )
+  }
+
+  // Time-locked — show countdown
+  if (etapaBloqueadaTempo && ultimaRespostaCriadoEm) {
+    return (
+      <div className="py-8 max-w-lg mx-auto space-y-8 animate-fadeIn">
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-indigo-500/15 flex items-center justify-center mx-auto">
+            <span className="text-3xl">🔒</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white">Etapa Ainda Não Liberada</h2>
+          <p className="text-gray-400 text-sm max-w-md mx-auto">
+            Esta etapa será liberada às 20h. Aproveite este tempo para refletir sobre suas respostas anteriores.
+          </p>
+        </div>
+
+        <CountdownTimer
+          ultimaRespostaCriadoEm={ultimaRespostaCriadoEm}
+          onUnlocked={() => {
+            setEtapaBloqueadaTempo(false)
+          }}
+        />
+
+        <div className="text-center">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-6 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition"
+          >
+            ← Voltar ao Dashboard
+          </button>
+        </div>
       </div>
     )
   }
