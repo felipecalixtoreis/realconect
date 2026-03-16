@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ETAPAS } from '@/lib/etapas'
+import { ETAPAS, type Etapa } from '@/lib/etapas'
 import { EtapaCard } from '@/components/EtapaCard'
 import { OracleOfEros } from '@/components/OracleOfEros'
 import { LoadingScreen } from '@/components/LoadingScreen'
@@ -15,8 +15,8 @@ export default function EtapaPage() {
   const params = useParams()
   const router = useRouter()
   const etapaNumero = Number(params.id)
-  const etapa = ETAPAS.find(e => e.numero === etapaNumero)
 
+  const [etapa, setEtapa] = useState<Etapa | undefined>(ETAPAS.find(e => e.numero === etapaNumero))
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -62,6 +62,18 @@ export default function EtapaPage() {
 
   useEffect(() => {
     const load = async () => {
+      // Load etapas from database
+      try {
+        const etapasRes = await fetch('/api/etapas')
+        const etapasData = await etapasRes.json()
+        if (etapasData.etapas?.length > 0) {
+          const dbEtapa = etapasData.etapas.find((e: any) => e.numero === etapaNumero)
+          if (dbEtapa) setEtapa(dbEtapa)
+        }
+      } catch {
+        // fallback to hardcoded already set
+      }
+
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }

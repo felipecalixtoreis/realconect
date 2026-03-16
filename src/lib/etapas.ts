@@ -91,3 +91,39 @@ export function getNarrativaPersonalizada(narrativa: string, nomeUsuario: string
   const primeiroNome = nomeUsuario.split(' ')[0] || nomeUsuario
   return narrativa.replace(/\{nome\}/g, primeiroNome)
 }
+
+// Convert database row to Etapa interface
+function dbToEtapa(row: any): Etapa {
+  return {
+    numero: row.numero,
+    titulo: row.titulo,
+    subtitulo: row.subtitulo,
+    narrativa: row.narrativa,
+    pergunta: row.pergunta,
+    tipoResposta: row.tipo_resposta as 'texto' | 'multipla_escolha',
+    maxCaracteres: row.max_caracteres,
+    opcoes: row.opcoes || undefined,
+    imagemUrl: row.imagem_url || '',
+    tipoIndice: row.tipo_indice,
+  }
+}
+
+// Server-side function to load etapas from database (with fallback to hardcoded)
+export async function getEtapasFromDB(): Promise<Etapa[]> {
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('etapas_config')
+      .select('*')
+      .order('numero')
+
+    if (error || !data || data.length === 0) {
+      return ETAPAS // fallback to hardcoded
+    }
+
+    return data.map(dbToEtapa)
+  } catch {
+    return ETAPAS // fallback to hardcoded
+  }
+}

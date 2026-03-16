@@ -28,13 +28,18 @@ export default function AdminPage() {
   const [userSaving, setUserSaving] = useState<Record<string, boolean>>({})
   const [resetSending, setResetSending] = useState<Record<string, boolean>>({})
 
+  // Etapas editing
+  const [etapasConfig, setEtapasConfig] = useState<any[]>([])
+  const [etapaSaving, setEtapaSaving] = useState<Record<number, boolean>>({})
+  const [etapaExpanded, setEtapaExpanded] = useState<number | null>(null)
+
   // Respond as user
   const [respondAsUser, setRespondAsUser] = useState('')
   const [respondSession, setRespondSession] = useState('')
   const [respondEtapa, setRespondEtapa] = useState(1)
   const [respondTexto, setRespondTexto] = useState('')
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData(); loadEtapas() }, [])
 
   const showMessage = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
     setMessage(msg)
@@ -73,6 +78,37 @@ export default function AdminPage() {
       showMessage('Erro ao carregar dados', 'error')
     }
     setLoading(false)
+  }
+
+  const loadEtapas = async () => {
+    try {
+      const res = await fetch('/api/admin/etapas')
+      const data = await res.json()
+      if (data.etapas) setEtapasConfig(data.etapas)
+    } catch {
+      // fallback to hardcoded
+    }
+  }
+
+  const handleSaveEtapa = async (numero: number) => {
+    const etapa = etapasConfig.find((e: any) => e.numero === numero)
+    if (!etapa) return
+    setEtapaSaving(prev => ({ ...prev, [numero]: true }))
+
+    const res = await fetch('/api/admin/etapas', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(etapa),
+    })
+    const data = await res.json()
+    showMessage(data.message || data.error, data.error ? 'error' : 'success')
+    setEtapaSaving(prev => ({ ...prev, [numero]: false }))
+  }
+
+  const updateEtapaField = (numero: number, field: string, value: any) => {
+    setEtapasConfig(prev => prev.map(e =>
+      e.numero === numero ? { ...e, [field]: value } : e
+    ))
   }
 
   const loadRespostas = async (sessionId: string) => {
@@ -389,6 +425,136 @@ export default function AdminPage() {
           ))}
           {sessions.length === 0 && <p className="text-gray-500 text-sm">Nenhuma sessão criada ainda.</p>}
         </div>
+
+        {/* ===== PERGUNTAS DAS ETAPAS ===== */}
+        {etapasConfig.length > 0 && (
+          <div className="bg-slate-900/50 border border-cyan-800/30 rounded-2xl p-6 space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2">📝 Perguntas das Etapas</h2>
+              <p className="text-gray-400 text-sm mt-2">
+                Edite o título, narrativa e pergunta de cada etapa do experimento. Clique na etapa para expandir.
+              </p>
+            </div>
+
+            {etapasConfig.map((etapa: any) => (
+              <div key={etapa.numero} className="bg-slate-800/70 rounded-xl border border-slate-700/50 overflow-hidden">
+                <button
+                  onClick={() => setEtapaExpanded(etapaExpanded === etapa.numero ? null : etapa.numero)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-slate-700/30 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold text-sm">
+                      {etapa.numero}
+                    </span>
+                    <div className="text-left">
+                      <h3 className="text-white font-semibold text-sm">{etapa.titulo}</h3>
+                      <p className="text-gray-500 text-xs">{etapa.subtitulo} — {etapa.tipo_indice}</p>
+                    </div>
+                  </div>
+                  <span className={`text-gray-500 transition-transform ${etapaExpanded === etapa.numero ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+
+                {etapaExpanded === etapa.numero && (
+                  <div className="p-4 pt-0 space-y-3 border-t border-slate-700/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Título</label>
+                        <input
+                          value={etapa.titulo}
+                          onChange={(e) => updateEtapaField(etapa.numero, 'titulo', e.target.value)}
+                          className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Subtítulo</label>
+                        <input
+                          value={etapa.subtitulo}
+                          onChange={(e) => updateEtapaField(etapa.numero, 'subtitulo', e.target.value)}
+                          className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Pergunta</label>
+                      <input
+                        value={etapa.pergunta}
+                        onChange={(e) => updateEtapaField(etapa.numero, 'pergunta', e.target.value)}
+                        className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Narrativa</label>
+                      <textarea
+                        value={etapa.narrativa}
+                        onChange={(e) => updateEtapaField(etapa.numero, 'narrativa', e.target.value)}
+                        className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-3 py-2.5 text-white text-sm resize-none focus:ring-2 focus:ring-cyan-500/50 focus:outline-none leading-relaxed"
+                        rows={3}
+                      />
+                      <p className="text-gray-600 text-xs mt-1">Use {'{nome}'} para inserir o nome do participante automaticamente.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Tipo Resposta</label>
+                        <select
+                          value={etapa.tipo_resposta}
+                          onChange={(e) => updateEtapaField(etapa.numero, 'tipo_resposta', e.target.value)}
+                          className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                        >
+                          <option value="texto">Texto</option>
+                          <option value="multipla_escolha">Múltipla Escolha</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Max Caracteres</label>
+                        <input
+                          type="number"
+                          value={etapa.max_caracteres}
+                          onChange={(e) => updateEtapaField(etapa.numero, 'max_caracteres', Number(e.target.value))}
+                          className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Tipo Índice</label>
+                        <input
+                          value={etapa.tipo_indice}
+                          onChange={(e) => updateEtapaField(etapa.numero, 'tipo_indice', e.target.value)}
+                          className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {etapa.tipo_resposta === 'multipla_escolha' && (
+                      <div>
+                        <label className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1 block">Opções (uma por linha)</label>
+                        <textarea
+                          value={(etapa.opcoes || []).join('\n')}
+                          onChange={(e) => updateEtapaField(etapa.numero, 'opcoes', e.target.value.split('\n').filter((o: string) => o.trim()))}
+                          className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl px-3 py-2.5 text-white text-sm resize-none focus:ring-2 focus:ring-cyan-500/50 focus:outline-none"
+                          rows={3}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleSaveEtapa(etapa.numero)}
+                        disabled={etapaSaving[etapa.numero]}
+                        className="px-5 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-500 transition font-medium text-sm disabled:opacity-50"
+                      >
+                        {etapaSaving[etapa.numero] ? 'Salvando...' : `Salvar Etapa ${etapa.numero}`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ===== PERFIL DOS PARTICIPANTES ===== */}
         {profiles.length > 0 && (

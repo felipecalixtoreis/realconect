@@ -47,19 +47,26 @@ export default function Home() {
   useEffect(() => {
     const checkProgress = async () => {
       try {
+        // First: load public progress (works for everyone, even not logged in)
+        const pubRes = await fetch('/api/progresso-publico')
+        const pubData = await pubRes.json()
+        if (pubData.etapa_desbloqueada) {
+          setEtapaAtual(pubData.etapa_desbloqueada)
+        }
+
+        // Then: check if logged in for personalized progress
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
-
         if (user) {
           setIsLoggedIn(true)
           const res = await fetch('/api/session')
           const data = await res.json()
           if (data.session) {
-            // Count completed stages (where user has responded)
             const minhasRespostas = (data.respostas || []).filter(
               (r: any) => r.user_id === user.id
             )
-            setEtapaAtual(minhasRespostas.length)
+            const personalProgress = minhasRespostas.length
+            setEtapaAtual(prev => Math.max(prev, personalProgress))
           }
         }
       } catch {
