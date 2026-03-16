@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { ETAPAS } from '@/lib/etapas'
 
 export default function AdminPage() {
@@ -55,6 +55,10 @@ export default function AdminPage() {
   const [testGenieHistory, setTestGenieHistory] = useState<{pergunta: string; resposta: string; interaction_number: number; bonus?: boolean}[]>([])
   const [testGenieBonusGranted, setTestGenieBonusGranted] = useState(false)
   const [testGenieMaxWishes, setTestGenieMaxWishes] = useState(3)
+  const [testPlayingAudio, setTestPlayingAudio] = useState<string | null>(null)
+  const [testLoadingAudio, setTestLoadingAudio] = useState<string | null>(null)
+  const testAudioCache = useRef<Map<string, string>>(new Map())
+  const testAudioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => { loadData(); loadEtapas(); loadHintOverrides() }, [])
 
@@ -328,6 +332,43 @@ export default function AdminPage() {
     loadData()
   }
 
+  const testPlayAudio = useCallback(async (text: string, id: string) => {
+    // Stop current audio
+    if (testAudioRef.current) {
+      testAudioRef.current.pause()
+      testAudioRef.current = null
+    }
+    if (testPlayingAudio === id) {
+      setTestPlayingAudio(null)
+      return
+    }
+    setTestLoadingAudio(id)
+    try {
+      let audioUrl = testAudioCache.current.get(id)
+      if (!audioUrl) {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+        if (!res.ok) throw new Error('TTS failed')
+        const blob = await res.blob()
+        audioUrl = URL.createObjectURL(blob)
+        testAudioCache.current.set(id, audioUrl)
+      }
+      setTestPlayingAudio(id)
+      setTestLoadingAudio(null)
+      const audio = new Audio(audioUrl)
+      testAudioRef.current = audio
+      audio.onended = () => { setTestPlayingAudio(null); testAudioRef.current = null }
+      audio.onerror = () => { setTestPlayingAudio(null); setTestLoadingAudio(null); testAudioRef.current = null }
+      await audio.play()
+    } catch {
+      setTestPlayingAudio(null)
+      setTestLoadingAudio(null)
+    }
+  }, [testPlayingAudio])
+
   const handleTestGenieSend = async () => {
     if (!testGenieSession || !testGenieUser || !testGeniePergunta.trim()) {
       showMessage('Preencha sessão, usuário e a pergunta', 'error'); return
@@ -369,6 +410,8 @@ export default function AdminPage() {
           setTestGenieMaxWishes(6)
         }
         if (data.max_wishes) setTestGenieMaxWishes(data.max_wishes)
+        // Auto-play audio
+        setTimeout(() => testPlayAudio(data.resposta, `sandbox-${count}`), 300)
       }
     } catch {
       showMessage('Erro ao testar interação com Eros', 'error')
@@ -377,6 +420,11 @@ export default function AdminPage() {
   }
 
   const handleTestGenieReset = () => {
+    if (testAudioRef.current) { testAudioRef.current.pause(); testAudioRef.current = null }
+    setTestPlayingAudio(null)
+    setTestLoadingAudio(null)
+    testAudioCache.current.forEach(url => URL.revokeObjectURL(url))
+    testAudioCache.current.clear()
     setTestGenieHistory([])
     setTestGenieBonusGranted(false)
     setTestGenieMaxWishes(3)
@@ -871,6 +919,31 @@ export default function AdminPage() {
                           {h.resposta}
                         </p>
                         <div className="mt-1 flex items-center gap-2">
+                          <button
+                            onClick={() => testPlayAudio(h.resposta, `sandbox-${idx}`)}
+                            className={`inline-flex items-center justify-center rounded-full transition-all w-5 h-5 ${
+                              testPlayingAudio === `sandbox-${idx}`
+                                ? 'bg-indigo-500/40 text-indigo-200'
+                                : 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
+                            }`}
+                            title={testPlayingAudio === `sandbox-${idx}` ? 'Pausar' : 'Ouvir'}
+                          >
+                            {testLoadingAudio === `sandbox-${idx}` ? (
+                              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                            ) : testPlayingAudio === `sandbox-${idx}` ? (
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <rect x="6" y="4" width="4" height="16" rx="1" />
+                                <rect x="14" y="4" width="4" height="16" rx="1" />
+                              </svg>
+                            ) : (
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
+                            )}
+                          </button>
                           <span className="text-indigo-500/40 text-[10px]">
                             Pedido {h.interaction_number} de {testGenieMaxWishes}
                           </span>
