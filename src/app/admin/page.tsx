@@ -742,13 +742,29 @@ export default function AdminPage() {
             <div className="mt-4 space-y-2">
               <h3 className="text-sm font-semibold text-gray-400">Contextos existentes:</h3>
               {contextos.map((c: any) => (
-                <div key={c.id} className="bg-slate-700/50 rounded-lg p-3 text-gray-300 text-sm flex items-start justify-between gap-2">
-                  <div>
+                <div key={c.id} className="bg-slate-700/50 rounded-lg p-3 text-gray-300 text-sm flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <span className="text-purple-400 text-xs font-medium">
                       {c.user_id ? getProfileName(c.user_id) : 'Geral'}:
                     </span>
                     <span className="ml-2">{c.contexto}</span>
                   </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Excluir este contexto?')) return
+                      const res = await fetch('/api/admin/context', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: c.id }),
+                      })
+                      const data = await res.json()
+                      showMessage(data.message || data.error, data.error ? 'error' : 'success')
+                      loadData()
+                    }}
+                    className="px-2.5 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/20 transition flex-shrink-0"
+                  >
+                    🗑️
+                  </button>
                 </div>
               ))}
             </div>
