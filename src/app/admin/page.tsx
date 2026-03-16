@@ -46,6 +46,16 @@ export default function AdminPage() {
   const [respondEtapa, setRespondEtapa] = useState(1)
   const [respondTexto, setRespondTexto] = useState('')
 
+  // Test Genie (sandbox)
+  const [testGenieUser, setTestGenieUser] = useState('')
+  const [testGenieSession, setTestGenieSession] = useState('')
+  const [testGenieEtapa, setTestGenieEtapa] = useState(2)
+  const [testGeniePergunta, setTestGeniePergunta] = useState('')
+  const [testGenieSending, setTestGenieSending] = useState(false)
+  const [testGenieHistory, setTestGenieHistory] = useState<{pergunta: string; resposta: string; interaction_number: number; bonus?: boolean}[]>([])
+  const [testGenieBonusGranted, setTestGenieBonusGranted] = useState(false)
+  const [testGenieMaxWishes, setTestGenieMaxWishes] = useState(3)
+
   useEffect(() => { loadData(); loadEtapas(); loadHintOverrides() }, [])
 
   // Auto-fill hint text when selecting a user+stage that already has an override
@@ -316,6 +326,61 @@ export default function AdminPage() {
     showMessage(data.message || 'Perfil salvo!', data.error ? 'error' : 'success')
     setPerfilSaving(prev => ({ ...prev, [userId]: false }))
     loadData()
+  }
+
+  const handleTestGenieSend = async () => {
+    if (!testGenieSession || !testGenieUser || !testGeniePergunta.trim()) {
+      showMessage('Preencha sessão, usuário e a pergunta', 'error'); return
+    }
+    const maxWishes = testGenieBonusGranted ? 6 : 3
+    const count = testGenieHistory.length
+    if (count >= maxWishes) {
+      showMessage(`Limite de ${maxWishes} pedidos atingido. Limpe o sandbox para reiniciar.`, 'error'); return
+    }
+    setTestGenieSending(true)
+    try {
+      const res = await fetch('/api/admin/test-genie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: testGenieSession,
+          user_id: testGenieUser,
+          etapa: testGenieEtapa,
+          pergunta: testGeniePergunta.trim(),
+          sandbox_history: testGenieHistory.map(h => ({ pergunta: h.pergunta, resposta: h.resposta })),
+          sandbox_count: count,
+          bonus_already_granted: testGenieBonusGranted,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        showMessage(data.error, 'error')
+      } else {
+        const newEntry = {
+          pergunta: testGeniePergunta.trim(),
+          resposta: data.resposta,
+          interaction_number: data.interaction_number,
+          bonus: data.bonus_just_granted || false,
+        }
+        setTestGenieHistory(prev => [...prev, newEntry])
+        setTestGeniePergunta('')
+        if (data.bonus_just_granted) {
+          setTestGenieBonusGranted(true)
+          setTestGenieMaxWishes(6)
+        }
+        if (data.max_wishes) setTestGenieMaxWishes(data.max_wishes)
+      }
+    } catch {
+      showMessage('Erro ao testar interação com Eros', 'error')
+    }
+    setTestGenieSending(false)
+  }
+
+  const handleTestGenieReset = () => {
+    setTestGenieHistory([])
+    setTestGenieBonusGranted(false)
+    setTestGenieMaxWishes(3)
+    setTestGeniePergunta('')
   }
 
   const getProfileName = (userId: string) => {
@@ -713,6 +778,149 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ===== TESTAR EROS (SANDBOX) ===== */}
+        {profiles.length > 0 && sessions.length > 0 && (
+          <div className="bg-slate-900/50 border border-rose-800/30 rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">🏹 Testar Eros — Sandbox</h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  Simule interações com o Eros em nome de qualquer participante. <strong className="text-rose-400">Nenhum dado é salvo</strong> — apenas mostra a resposta que o Eros daria em produção.
+                </p>
+              </div>
+              {testGenieHistory.length > 0 && (
+                <button onClick={handleTestGenieReset}
+                  className="px-3 py-1.5 bg-slate-700 text-gray-300 rounded-lg text-xs font-medium hover:bg-slate-600 transition">
+                  🔄 Limpar Sandbox
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <select value={testGenieSession} onChange={(e) => setTestGenieSession(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-rose-500/50 focus:outline-none">
+                <option value="">Sessão</option>
+                {sessions.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.id.slice(0, 8)}... ({getProfileName(s.user1_id)} ↔ {getProfileName(s.user2_id)})</option>
+                ))}
+              </select>
+
+              <select value={testGenieUser} onChange={(e) => { setTestGenieUser(e.target.value); handleTestGenieReset() }}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-rose-500/50 focus:outline-none">
+                <option value="">Testar como...</option>
+                {profiles.map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.nome} ({p.email})</option>
+                ))}
+              </select>
+
+              <select value={testGenieEtapa} onChange={(e) => { setTestGenieEtapa(Number(e.target.value)); handleTestGenieReset() }}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-rose-500/50 focus:outline-none">
+                {(etapasConfig.length > 0 ? etapasConfig : ETAPAS).map((e: any) => (
+                  <option key={e.numero} value={e.numero}>Etapa {e.numero} - {e.titulo}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status bar */}
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Pedidos:</span>
+                <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded-full font-semibold">
+                  {testGenieHistory.length} / {testGenieMaxWishes}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Restantes:</span>
+                <span className="text-white font-semibold">{Math.max(0, testGenieMaxWishes - testGenieHistory.length)}</span>
+              </div>
+              {testGenieBonusGranted && (
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full font-semibold animate-pulse">
+                  ✨ Bônus concedido!
+                </span>
+              )}
+            </div>
+
+            {/* Chat history (sandbox) */}
+            {testGenieHistory.length > 0 && (
+              <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 max-h-96 overflow-y-auto p-4 space-y-4">
+                {testGenieHistory.map((h, idx) => (
+                  <div key={idx} className="space-y-2">
+                    {/* Pergunta do usuário */}
+                    <div className="flex gap-2 justify-end">
+                      <div className="bg-purple-500/15 border border-purple-500/20 rounded-xl rounded-tr-sm px-3 py-2 max-w-[85%]">
+                        <p className="text-purple-200 text-sm">{h.pergunta}</p>
+                      </div>
+                      <div className="w-7 h-7 rounded-full bg-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs">👤</span>
+                      </div>
+                    </div>
+                    {/* Resposta do Eros */}
+                    <div className="flex gap-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs">🏹</span>
+                      </div>
+                      <div className={`border rounded-xl rounded-tl-sm px-3 py-2 max-w-[85%] ${
+                        h.bonus
+                          ? 'bg-amber-500/10 border-amber-500/30'
+                          : 'bg-indigo-500/10 border-indigo-500/20'
+                      }`}>
+                        <p className={`text-sm leading-relaxed whitespace-pre-line ${h.bonus ? 'text-amber-200' : 'text-indigo-200'}`}>
+                          {h.resposta}
+                        </p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="text-indigo-500/40 text-[10px]">
+                            Pedido {h.interaction_number} de {testGenieMaxWishes}
+                          </span>
+                          {h.bonus && (
+                            <span className="text-amber-400 text-[10px] font-semibold">✨ BÔNUS CONCEDIDO</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Input */}
+            {testGenieHistory.length < testGenieMaxWishes ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={testGeniePergunta}
+                  onChange={(e) => setTestGeniePergunta(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleTestGenieSend()}
+                  placeholder="Digite o pedido do usuário ao Eros..."
+                  disabled={testGenieSending}
+                  maxLength={300}
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:ring-2 focus:ring-rose-500/50 focus:outline-none disabled:opacity-50 text-sm"
+                />
+                <button
+                  onClick={handleTestGenieSend}
+                  disabled={testGenieSending || !testGeniePergunta.trim() || !testGenieUser || !testGenieSession}
+                  className="px-5 py-3 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-xl font-medium hover:shadow-lg transition disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                >
+                  {testGenieSending ? '⏳ Gerando...' : '🏹 Enviar'}
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-3">
+                <p className="text-gray-400 text-sm italic">
+                  Todos os {testGenieMaxWishes} pedidos foram utilizados nesta simulação.
+                </p>
+                <button onClick={handleTestGenieReset}
+                  className="mt-2 px-4 py-2 bg-slate-700 text-gray-300 rounded-lg text-xs font-medium hover:bg-slate-600 transition">
+                  🔄 Reiniciar Sandbox
+                </button>
+              </div>
+            )}
+
+            <p className="text-gray-600 text-[10px] text-center">
+              Sandbox: usa contexto e perfis reais do banco, mas nenhuma interação é salva. Ideal para testar respostas do Eros e o sistema de bônus.
+            </p>
           </div>
         )}
 
