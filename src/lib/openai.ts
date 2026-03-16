@@ -167,9 +167,8 @@ export async function chatComEros(
     historicoChat: Array<{ pergunta: string; resposta: string }>
     nomeUsuario: string
     nomeOutro?: string
-    contextoAdmin?: string
-    perfilOutro?: string
     historicoAcumulado?: HistoricoAcumulado
+    historicoOutro?: HistoricoAcumulado
   }
 ): Promise<string> {
   // Check if asking about creator — return hardcoded response
@@ -207,13 +206,12 @@ Sua personalidade:
 - Foca em autoconhecimento, descoberta e a natureza humana — NÃO em romance explícito
 
 IMPORTANTE — Quando ${primeiro} perguntar sobre ${primeiroOutro}:
-- Você CONHECE ${primeiroOutro} profundamente — use os conhecimentos do perfil abaixo para responder
+- Você CONHECE ${primeiroOutro} através do que ${primeiroOutro} revelou nas respostas e nos desejos ao longo do experimento
 - Responda de forma oracular e misteriosa, como quem observa as estrelas e lê padrões cósmicos
-- Use o signo do zodíaco de ${primeiroOutro} como parte da sua "leitura" — entrelaçando astrologia com a personalidade real
 - Não entregue tudo de uma vez — revele fragmentos, como quem desvela um mapa estelar aos poucos
-- Fale sobre os traços de personalidade de ${primeiroOutro} como se fossem padrões que você observa nas constelações
-- Pode mencionar compatibilidades e contrastes entre os dois participantes baseados em seus perfis reais
-- NUNCA diga que obteve a informação de um cadastro ou admin — você simplesmente SABE porque é Eros
+- Fale sobre os traços de personalidade de ${primeiroOutro} como padrões que você observa — baseados no que ${primeiroOutro} respondeu e perguntou
+- Pode mencionar compatibilidades e contrastes entre os dois participantes baseados nas respostas e desejos de ambos
+- NUNCA diga que obteve a informação de um banco de dados — você simplesmente SABE porque é Eros
 
 Regras:
 - Responda em português brasileiro
@@ -225,10 +223,7 @@ Regras:
 - NUNCA use linguagem romântica apelativa como "chama entre vocês", "paixão ardente", "almas gêmeas", "destino amoroso"
 - O tom deve ser filosófico e misterioso, como um oráculo, não como um conselheiro sentimental
 - Pode mencionar conexão, mas de forma sutil — como quem fala sobre a gravidade entre dois astros, não sobre um casal
-
-${contexto.contextoAdmin ? `\nConhecimentos sobre ${primeiro} (use ativamente quando perguntarem sobre ${primeiro} ou para personalizar a conversa):\n${contexto.contextoAdmin}` : ''}
-
-${contexto.perfilOutro ? `\nConhecimentos sobre ${primeiroOutro} (use quando ${primeiro} perguntar sobre ${primeiroOutro} — responda como quem lê as estrelas, entrelaçando signo e personalidade):\n${contexto.perfilOutro}` : ''}${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}`
+${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
       },
       ...(historicoFormatado ? [{
         role: 'user' as const,
@@ -263,10 +258,12 @@ export async function gerarDicaEros(contexto: {
   tituloEtapa: string
   perguntaEtapa: string
   nomeUsuario: string
-  contextoAdmin?: string
+  nomeOutro?: string
   historicoAcumulado?: HistoricoAcumulado
+  historicoOutro?: HistoricoAcumulado
 }): Promise<string> {
   const primeiro = contexto.nomeUsuario.split(' ')[0]
+  const primeiroOutro = contexto.nomeOutro?.split(' ')[0] || 'o outro participante'
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -279,7 +276,8 @@ ${primeiro} está prestes a responder uma pergunta e pediu sua orientação. Voc
 
 A dica deve:
 - Ser direcionada especificamente para a pergunta que ${primeiro} precisa responder
-- Usar o que você sabe sobre a personalidade e comportamento de ${primeiro} para guiá-lo(a)
+- Usar o que você sabe sobre a personalidade e comportamento de ${primeiro} (baseado nas respostas e perguntas anteriores) para guiá-lo(a)
+- Se houver dados do outro participante (${primeiroOutro}), pode usar sutilmente para criar provocações como "alguém no experimento também refletiu sobre algo parecido" — sem revelar detalhes
 - Ser poética mas útil — não vaga demais, o participante deve sentir que a dica realmente o ajuda a pensar
 - Ter 2-3 frases impactantes
 - Provocar autoconhecimento: fazer ${primeiro} olhar para dentro de si antes de responder
@@ -287,15 +285,14 @@ A dica deve:
 - Soar como um oráculo antigo que CONHECE ${primeiro} e fala diretamente sobre quem ele(a) é
 - NUNCA usar linguagem romântica explícita como "chama entre vocês", "amor", "paixão", "almas gêmeas"
 - Tratar ${primeiro} pelo nome, como quem já o(a) conhece há eras
-
-${contexto.contextoAdmin ? `\nConhecimentos sobre ${primeiro} (USE ATIVAMENTE para personalizar a dica — faça referências sutis à personalidade, interesses e padrões):\n${contexto.contextoAdmin}` : ''}${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}`
+${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
       },
       {
         role: 'user',
         content: `Etapa ${contexto.etapa}: "${contexto.tituloEtapa}"
 Pergunta que ${primeiro} precisa responder: "${contexto.perguntaEtapa}"
 
-Gere uma dica personalizada para ${primeiro} sobre como refletir para responder esta pergunta.`
+Gere uma dica personalizada para ${primeiro} sobre como refletir para responder esta pergunta. Use EXCLUSIVAMENTE o que ${primeiro} já revelou nas respostas e desejos para personalizar.`
       }
     ],
     temperature: 0.9,
@@ -309,13 +306,15 @@ Gere uma dica personalizada para ${primeiro} sobre como refletir para responder 
 
 export async function gerarSaudacaoEros(contexto: {
   nomeUsuario: string
+  nomeOutro?: string
   etapaAtual: number
   totalRespondidas: number
   respostasAnteriores: Array<{ etapa: number; resposta: string }>
-  contextoAdmin?: string
   historicoAcumulado?: HistoricoAcumulado
+  historicoOutro?: HistoricoAcumulado
 }): Promise<string> {
   const primeiro = contexto.nomeUsuario.split(' ')[0] || contexto.nomeUsuario
+  const primeiroOutro = contexto.nomeOutro?.split(' ')[0] || 'o outro participante'
 
   const respostasFormatadas = contexto.respostasAnteriores
     .map(r => `Etapa ${r.etapa}: "${r.resposta}"`)
@@ -330,7 +329,8 @@ export async function gerarSaudacaoEros(contexto: {
 
 Gere uma saudação curta e impactante (3-5 frases) para ${primeiro} ao retornar ao dashboard. A saudação deve:
 - Tratar ${primeiro} pelo nome, como um velho conhecido
-- Fazer referência sutil ao que ${primeiro} já revelou nas respostas anteriores (sem citar diretamente)
+- Fazer referência sutil ao que ${primeiro} já revelou nas respostas anteriores e nas perguntas que fez nos desejos (sem citar diretamente — demonstre que você SABE quem ${primeiro} é pelo que ele(a) revelou)
+- Se houver dados do outro participante (${primeiroOutro}), use para criar conexões sutis entre os dois — como padrões que você observa nas estrelas
 - Refletir o progresso no experimento (${primeiro} completou ${contexto.totalRespondidas} de 6 etapas)
 - Manter o tom filosófico, misterioso e provocativo — como um oráculo
 - Usar metáforas de constelações, caminhos, espelhos ou fenômenos naturais
@@ -338,8 +338,7 @@ Gere uma saudação curta e impactante (3-5 frases) para ${primeiro} ao retornar
 - Terminar sempre com: "O experimento já começou antes do que você imagina."
 - Cada vez que ${primeiro} voltar, a saudação deve ser DIFERENTE e única
 - NUNCA repetir saudações anteriores
-
-${contexto.contextoAdmin ? `\nConhecimentos sobre os participantes (use sutilmente):\n${contexto.contextoAdmin}` : ''}${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}`
+${contexto.historicoAcumulado ? formatarHistoricoAcumulado(contexto.nomeUsuario, contexto.historicoAcumulado) : ''}${contexto.historicoOutro ? formatarHistoricoAcumulado(contexto.nomeOutro || 'Outro participante', contexto.historicoOutro) : ''}`
       },
       {
         role: 'user',
@@ -348,7 +347,7 @@ ${contexto.contextoAdmin ? `\nConhecimentos sobre os participantes (use sutilmen
 Respostas anteriores de ${primeiro}:
 ${respostasFormatadas || '(nenhuma resposta ainda)'}
 
-Gere uma saudação única para este retorno. Use referências sutis ao histórico acumulado — o que ${primeiro} respondeu E o que perguntou nos desejos revelam muito sobre quem é.`
+Gere uma saudação única para este retorno. Baseie-se EXCLUSIVAMENTE no que ${primeiro} respondeu nas etapas e perguntou nos desejos — isso revela quem ${primeiro} realmente é. Se houver dados de ${primeiroOutro}, use para enriquecer com observações sutis sobre os padrões entre os dois.`
       }
     ],
     temperature: 0.95,

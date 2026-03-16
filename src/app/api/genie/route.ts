@@ -113,13 +113,7 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .single()
 
-    // Get ALL admin contexts (session-wide + both users' profiles)
-    const { data: contextos } = await admin
-      .from('admin_context')
-      .select('contexto, user_id')
-      .or(`session_id.eq.${session_id},user_id.eq.${user.id},user_id.is.null`)
-
-    // Get the other user's contexts separately
+    // Find the other user's ID
     const { data: session } = await admin
       .from('experiment_session')
       .select('user1_id, user2_id')
@@ -127,14 +121,6 @@ export async function POST(request: NextRequest) {
       .single()
 
     const outroUserId = session?.user1_id === user.id ? session?.user2_id : session?.user1_id
-
-    const { data: outroContextos } = outroUserId ? await admin
-      .from('admin_context')
-      .select('contexto')
-      .eq('user_id', outroUserId) : { data: [] }
-
-    const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
-    const perfilOutro = outroContextos?.map(c => c.contexto).join('\n') || undefined
 
     const etapaInfo = ETAPAS.find(e => e.numero === etapa)
 
@@ -144,8 +130,11 @@ export async function POST(request: NextRequest) {
       resposta: i.resposta,
     }))
 
-    // Fetch accumulated history for richer context
-    const historicoAcumulado = await buscarHistoricoAcumulado(admin, session_id, user.id)
+    // Fetch accumulated history for both users
+    const [historicoAcumulado, historicoOutro] = await Promise.all([
+      buscarHistoricoAcumulado(admin, session_id, user.id),
+      outroUserId ? buscarHistoricoAcumulado(admin, session_id, outroUserId) : Promise.resolve(undefined),
+    ])
 
     // Call Eros
     const respostaEros = await chatComEros(pergunta, {
@@ -156,9 +145,8 @@ export async function POST(request: NextRequest) {
       historicoChat: historico,
       nomeUsuario: profile?.nome || 'Participante',
       nomeOutro: outroProfile?.nome || 'o outro participante',
-      contextoAdmin,
-      perfilOutro,
       historicoAcumulado,
+      historicoOutro: historicoOutro || undefined,
     })
 
     // Save interaction

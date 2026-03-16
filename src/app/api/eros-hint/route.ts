@@ -71,24 +71,39 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    // Get admin context
-    const { data: contextos } = await admin
-      .from('admin_context')
-      .select('contexto')
-      .or(`session_id.eq.${session_id},user_id.eq.${user.id}`)
-
     const etapaInfo = ETAPAS.find(e => e.numero === etapa)
 
     // Fetch accumulated history for richer, personalized hints
     const historicoAcumulado = await buscarHistoricoAcumulado(admin, session_id, user.id)
+
+    // Find the other participant and fetch their history
+    const { data: session } = await admin
+      .from('experiment_session')
+      .select('user1_id, user2_id')
+      .eq('id', session_id)
+      .single()
+
+    const outroUserId = session?.user1_id === user.id ? session?.user2_id : session?.user1_id
+    let historicoOutro: Awaited<ReturnType<typeof buscarHistoricoAcumulado>> | undefined
+    let nomeOutro: string | undefined
+
+    if (outroUserId) {
+      const [outroHist, outroPerfil] = await Promise.all([
+        buscarHistoricoAcumulado(admin, session_id, outroUserId),
+        admin.from('profiles').select('nome').eq('id', outroUserId).single(),
+      ])
+      historicoOutro = outroHist
+      nomeOutro = outroPerfil.data?.nome || undefined
+    }
 
     const hintText = await gerarDicaEros({
       etapa,
       tituloEtapa: etapaInfo?.titulo || `Etapa ${etapa}`,
       perguntaEtapa: etapaInfo?.pergunta || '',
       nomeUsuario: profile?.nome || 'Participante',
-      contextoAdmin: contextos?.map(c => c.contexto).join('\n') || undefined,
+      nomeOutro,
       historicoAcumulado,
+      historicoOutro,
     })
 
     // Save hint

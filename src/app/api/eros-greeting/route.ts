@@ -40,30 +40,44 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fetch admin context (personality profiles) for this user
     const admin = createAdminClient()
-    const { data: contextos } = await admin
-      .from('admin_context')
-      .select('contexto')
-      .or(`session_id.eq.${sessionId},user_id.eq.${user.id}`)
-
-    const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
 
     // Fetch accumulated history (responses + genie wishes) for richer greeting
     const historicoAcumulado = await buscarHistoricoAcumulado(admin, sessionId, user.id)
+
+    // Find the other participant and fetch their history too
+    const { data: session } = await admin
+      .from('experiment_session')
+      .select('user1_id, user2_id')
+      .eq('id', sessionId)
+      .single()
+
+    const outroUserId = session?.user1_id === user.id ? session?.user2_id : session?.user1_id
+    let historicoOutro: Awaited<ReturnType<typeof buscarHistoricoAcumulado>> | undefined
+    let nomeOutro: string | undefined
+
+    if (outroUserId) {
+      const [outroHist, outroPerfil] = await Promise.all([
+        buscarHistoricoAcumulado(admin, sessionId, outroUserId),
+        admin.from('profiles').select('nome').eq('id', outroUserId).single(),
+      ])
+      historicoOutro = outroHist
+      nomeOutro = outroPerfil.data?.nome || undefined
+    }
 
     // All completed
     if (totalRespondidas >= 6) {
       const greeting = await gerarSaudacaoEros({
         nomeUsuario,
+        nomeOutro,
         etapaAtual: 7,
         totalRespondidas,
         respostasAnteriores: (respostas || []).map(r => ({
           etapa: r.etapa,
           resposta: r.resposta || '',
         })),
-        contextoAdmin,
         historicoAcumulado,
+        historicoOutro,
       })
       return NextResponse.json({ greeting, dynamic: true })
     }
@@ -71,14 +85,15 @@ export async function GET(request: NextRequest) {
     // Dynamic greeting based on context
     const greeting = await gerarSaudacaoEros({
       nomeUsuario,
+      nomeOutro,
       etapaAtual,
       totalRespondidas,
       respostasAnteriores: (respostas || []).map(r => ({
         etapa: r.etapa,
         resposta: r.resposta || '',
       })),
-      contextoAdmin,
       historicoAcumulado,
+      historicoOutro,
     })
 
     return NextResponse.json({ greeting, dynamic: true })
