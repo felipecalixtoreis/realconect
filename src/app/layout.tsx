@@ -14,9 +14,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "A vida é curta. Está pronta?",
-  description: "Um experimento narrativo de duas mentes curiosas",
+  description: "realconect.com",
   icons: {
     icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "A vida é curta. Está pronta?",
+    description: "realconect.com",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512 }],
+    type: "website",
   },
 }
 
