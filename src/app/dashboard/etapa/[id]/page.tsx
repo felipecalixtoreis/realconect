@@ -31,6 +31,8 @@ export default function EtapaPage() {
   const [respondedEtapaToday, setRespondedEtapaToday] = useState<number | null>(null)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [tresDesejosPlayed, setTresDesejosPlayed] = useState(false)
+  const [mostrarPerguntaAutorizacao, setMostrarPerguntaAutorizacao] = useState(false)
+  const [jaAutorizou, setJaAutorizou] = useState<boolean | null>(null)
   const audioAnuncioRef = useRef<HTMLAudioElement | null>(null)
 
   const playAnuncioDesejos = useCallback(async (nome: string) => {
@@ -101,12 +103,21 @@ export default function EtapaPage() {
       const minhaResposta = minhasRespostas.find(
         (r: any) => r.etapa === etapaNumero
       )
-      if (minhaResposta) setJaRespondeu(true)
+      if (minhaResposta) {
+        setJaRespondeu(true)
+        // Check if user already made authorization decision
+        if (minhaResposta.autorizar_exibicao === true) {
+          setJaAutorizou(true)
+        } else if (minhaResposta.autorizar_exibicao === false) {
+          setJaAutorizou(false)
+        }
+      }
 
       const outraResposta = data.respostas.find(
         (r: any) => r.user_id !== user.id && r.etapa === etapaNumero
       )
-      if (outraResposta) setRespostaOutro(outraResposta.resposta)
+      // Only show if the other participant authorized (resposta will be null if not)
+      if (outraResposta && outraResposta.resposta) setRespostaOutro(outraResposta.resposta)
 
       const indice = data.indices.find((i: any) => i.etapa === etapaNumero)
       if (indice) setResultado(indice)
@@ -116,6 +127,26 @@ export default function EtapaPage() {
     }
     load()
   }, [etapaNumero, router])
+
+  const handleAutorizacao = async (autorizar: boolean) => {
+    if (!sessionId) return
+    try {
+      await fetch('/api/resposta/autorizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          etapa: etapaNumero,
+          autorizar,
+        }),
+      })
+      setJaAutorizou(autorizar)
+      setMostrarPerguntaAutorizacao(false)
+      setTresDesejosPlayed(true)
+    } catch (error) {
+      console.error('Authorization error:', error)
+    }
+  }
 
   if (!etapa) {
     return (
@@ -153,7 +184,7 @@ export default function EtapaPage() {
       }
 
       setJaRespondeu(true)
-      setTresDesejosPlayed(true)
+      setMostrarPerguntaAutorizacao(true)
 
       // Play Eros announcing the 3 wishes
       playAnuncioDesejos(nomeUsuario)
@@ -281,6 +312,53 @@ export default function EtapaPage() {
         >
           ← Voltar ao Dashboard
         </button>
+      </div>
+    )
+  }
+
+  // Authorization question after submitting response
+  if (mostrarPerguntaAutorizacao && jaAutorizou === null) {
+    return (
+      <div className="py-8 max-w-2xl mx-auto">
+        <div className="text-center space-y-6 animate-fadeIn">
+          <div className="w-20 h-20 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">🔮</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white">Resposta Registrada!</h2>
+          <div className="bg-slate-800/60 border border-purple-500/20 rounded-2xl p-8 space-y-6">
+            <p className="text-gray-300 text-lg leading-relaxed">
+              Você autoriza que o outro participante veja a sua resposta desta etapa?
+            </p>
+            <p className="text-gray-500 text-sm italic">
+              Sua resposta só será revelada se você permitir.
+            </p>
+            <div className="flex gap-4 justify-center pt-2">
+              <button
+                onClick={() => handleAutorizacao(true)}
+                className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all"
+              >
+                ✓ Sim, autorizo
+              </button>
+              <button
+                onClick={() => handleAutorizacao(false)}
+                className="px-8 py-3 bg-slate-700 text-gray-300 font-semibold rounded-xl hover:bg-slate-600 transition-all"
+              >
+                ✗ Não, manter privado
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Eros still available */}
+        {sessionId && (
+          <GenieChat
+            sessionId={sessionId}
+            etapa={etapaNumero}
+            jaRespondeu={jaRespondeu}
+            nomeUsuario={nomeUsuario}
+            autoExpand={tresDesejosPlayed}
+          />
+        )}
       </div>
     )
   }

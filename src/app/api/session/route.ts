@@ -48,9 +48,18 @@ export async function GET(request: NextRequest) {
       .eq('session_id', session.id)
       .order('data_evento')
 
+    // Filter out other user's responses that haven't been authorized for display
+    const respostasFiltradas = (respostas || []).map((r: any) => {
+      if (r.user_id !== user.id && !r.autorizar_exibicao) {
+        // Hide the response text, but keep metadata so we know they responded
+        return { ...r, resposta: null, opcoes_selecionadas: null }
+      }
+      return r
+    })
+
     return NextResponse.json({
       session,
-      respostas: respostas || [],
+      respostas: respostasFiltradas,
       indices: indices || [],
       timeline: timeline || [],
     })

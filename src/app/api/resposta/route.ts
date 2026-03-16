@@ -71,10 +71,15 @@ export async function POST(request: NextRequest) {
       .neq('user_id', user.id)
       .single()
 
+    // Only share the other's response if they authorized it
+    const respostaOutroAutorizada = otherResponse?.autorizar_exibicao
+      ? otherResponse.resposta
+      : null
+
     return NextResponse.json({
       resposta: data,
       ambos_responderam: !!otherResponse,
-      resposta_outro: otherResponse?.resposta || null,
+      resposta_outro: respostaOutroAutorizada,
     })
   } catch (error) {
     console.error('Response error:', error)
