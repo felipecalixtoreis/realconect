@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
 
-    const { error } = await supabase
+    // Use admin client to bypass RLS (no UPDATE policy on respostas)
+    const admin = createAdminClient()
+    const { error } = await admin
       .from('respostas')
       .update({ autorizar_exibicao: autorizar })
       .eq('session_id', session_id)
