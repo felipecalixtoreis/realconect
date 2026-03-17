@@ -14,35 +14,66 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { session_id, etapa, resposta_user1, resposta_user2, tipo_indice } = body
+    const { session_id, etapa, tipo_indice } = body
 
-    if (!session_id || !etapa || !resposta_user1 || !resposta_user2 || !tipo_indice) {
+    if (!session_id || !etapa || !tipo_indice) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Fetch admin context for enriched analysis (session-wide + user-specific profiles)
     const adminClient = createAdminClient()
+
+    // Fetch session to get user IDs
+    const { data: sessionData } = await adminClient
+      .from('experiment_session')
+      .select('user1_id, user2_id')
+      .eq('id', session_id)
+      .single()
+
+    if (!sessionData) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    const { user1_id, user2_id } = sessionData
+
+    // Fetch BOTH responses directly from DB (bypasses authorization filter)
+    const { data: respostasEtapa } = await adminClient
+      .from('respostas')
+      .select('user_id, resposta')
+      .eq('session_id', session_id)
+      .eq('etapa', etapa)
+
+    const respostaUser1 = respostasEtapa?.find(r => r.user_id === user1_id)
+    const respostaUser2 = respostasEtapa?.find(r => r.user_id === user2_id)
+
+    if (!respostaUser1 || !respostaUser2) {
+      return NextResponse.json({ error: 'Both users must respond before analysis' }, { status: 400 })
+    }
+
+    const resposta_user1 = respostaUser1.resposta
+    const resposta_user2 = respostaUser2.resposta
+
+    // Fetch admin context for enriched analysis (session-wide + user-specific profiles)
     const { data: contextos } = await adminClient
       .from('admin_context')
       .select('contexto')
-      .or(`session_id.eq.${session_id},user_id.eq.${body.user1_id},user_id.eq.${body.user2_id}`)
+      .or(`session_id.eq.${session_id},user_id.eq.${user1_id},user_id.eq.${user2_id}`)
 
     const contextoAdmin = contextos?.map(c => c.contexto).join('\n') || undefined
 
     // Fetch accumulated history for both users for richer analysis
     const [historicoUser1, historicoUser2] = await Promise.all([
-      body.user1_id ? buscarHistoricoAcumulado(adminClient, session_id, body.user1_id) : undefined,
-      body.user2_id ? buscarHistoricoAcumulado(adminClient, session_id, body.user2_id) : undefined,
+      user1_id ? buscarHistoricoAcumulado(adminClient, session_id, user1_id) : undefined,
+      user2_id ? buscarHistoricoAcumulado(adminClient, session_id, user2_id) : undefined,
     ])
 
     // Get user names for the history context
     const { data: profiles } = await adminClient
       .from('profiles')
       .select('id, nome')
-      .in('id', [body.user1_id, body.user2_id].filter(Boolean))
+      .in('id', [user1_id, user2_id].filter(Boolean))
 
-    const nomeUser1 = profiles?.find(p => p.id === body.user1_id)?.nome || 'Pessoa 1'
-    const nomeUser2 = profiles?.find(p => p.id === body.user2_id)?.nome || 'Pessoa 2'
+    const nomeUser1 = profiles?.find(p => p.id === user1_id)?.nome || 'Pessoa 1'
+    const nomeUser2 = profiles?.find(p => p.id === user2_id)?.nome || 'Pessoa 2'
 
     // Analyze compatibility
     const analise = await analisarCompatibilidade(
@@ -101,8 +132,8 @@ export async function POST(request: NextRequest) {
           .eq('session_id', session_id)
           .order('etapa')
 
-        const user1Respostas = allRespostas?.filter(r => r.user_id === body.user1_id).map(r => r.resposta) || []
-        const user2Respostas = allRespostas?.filter(r => r.user_id === body.user2_id).map(r => r.resposta) || []
+        const user1Respostas = allRespostas?.filter(r => r.user_id === user1_id).map(r => r.resposta) || []
+        const user2Respostas = allRespostas?.filter(r => r.user_id === user2_id).map(r => r.resposta) || []
 
         sugestao = await sugerirAtividade(
           user1Respostas,

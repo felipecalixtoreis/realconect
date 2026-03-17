@@ -148,7 +148,29 @@ export default function EtapaPage() {
       if (outraResposta && outraResposta.resposta) setRespostaOutro(outraResposta.resposta)
 
       const indice = data.indices.find((i: any) => i.etapa === etapaNumero)
-      if (indice) setResultado(indice)
+      if (indice) {
+        setResultado(indice)
+      } else if (jaRespondeuEstaEtapa && outraResposta) {
+        // Both responded but analysis is missing — trigger it now
+        try {
+          const etapaInfo = ETAPAS.find(e => e.numero === etapaNumero)
+          const analyzeRes = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: data.session.id,
+              etapa: etapaNumero,
+              tipo_indice: etapaInfo?.tipoIndice || 'geral',
+            }),
+          })
+          if (analyzeRes.ok) {
+            const analyzeData = await analyzeRes.json()
+            setResultado(analyzeData.indice)
+          }
+        } catch (e) {
+          console.error('Auto-analysis error:', e)
+        }
+      }
 
       setLoading(false)
       setTimeout(() => setVisible(true), 50)
