@@ -53,7 +53,7 @@ RealConect e um experimento narrativo de conexao humana onde dois participantes 
 │   │       ├── analyze/final/route.ts # Resumo final
 │   │       ├── eros-greeting/route.ts # Saudacao do Eros
 │   │       ├── eros-hint/route.ts     # Dica do Eros
-│   │       ├── genie/route.ts         # 3 desejos (chat com Eros)
+│   │       ├── genie/route.ts         # 3+1 desejos (chat com Eros + bonus)
 │   │       ├── tts/route.ts           # Text-to-Speech ElevenLabs
 │   │       ├── etapas/route.ts        # Config etapas (publico)
 │   │       ├── progresso-publico/route.ts  # Progresso (publico)
@@ -65,12 +65,14 @@ RealConect e um experimento narrativo de conexao humana onde dois participantes 
 │   │           ├── respostas/route.ts # CRUD respostas
 │   │           ├── context/route.ts   # CRUD contexto IA
 │   │           ├── etapas/route.ts    # CRUD etapas
-│   │           └── send-reset/route.ts # Enviar reset senha
+│   │           ├── send-reset/route.ts # Enviar reset senha
+│   │           └── test-genie/route.ts # Sandbox Eros (nao salva dados)
 │   ├── components/
 │   │   ├── ErosAvatar.tsx             # Avatar + saudacao + TTS
 │   │   ├── ErosFloatingHint.tsx       # Botao flutuante de dica
 │   │   ├── EtapaCard.tsx              # Card de pergunta/resposta
-│   │   ├── GenieChat.tsx              # Chat dos 3 desejos
+│   │   ├── GenieChat.tsx              # Chat dos 3+1 desejos (com bonus)
+│   │   ├── CountdownTimer.tsx        # Countdown para proxima etapa (20h)
 │   │   ├── OracleOfEros.tsx           # Visualizacao animada
 │   │   ├── FinalResult.tsx            # Resultado final
 │   │   ├── CompatibilityChart.tsx     # Grafico compatibilidade
@@ -127,17 +129,19 @@ Dashboard → Clica etapa → /dashboard/etapa/[id]
 → Pergunta de autorizacao (exibir resposta ao outro?)
 → Se outro ja respondeu: analise de compatibilidade
 → Se nao: tela de espera
-→ 3 desejos disponiveis (chat com Eros)
+→ 3 desejos disponiveis (chat com Eros) — bonus de +1 desejo se pedir mais
 → Dica flutuante disponivel (icone Eros)
 ```
 
 ### 4. Analise de Compatibilidade
 ```
 Ambos responderam → POST /api/analyze
+→ API busca respostas direto do banco (bypassa autorizacao de exibicao)
 → OpenAI analisa respostas
 → Retorna: intelectual%, emocional%, padroes, diferencas, resumo
 → Salva em indices + cria evento timeline
 → Etapa 3: tambem sugere atividade
+→ Auto-recuperacao: se analise falhou, e retriggered ao revisitar a etapa
 ```
 
 ### 5. Resultado Final
@@ -232,9 +236,22 @@ Ambos responderam → POST /api/analyze
 | session_id | uuid (FK) | |
 | user_id | uuid (FK) | |
 | etapa | int | |
-| interaction_number | int | 1, 2 ou 3 |
+| interaction_number | int | 1 a 4 (com bonus) |
 | pergunta | text | Pergunta do usuario |
 | resposta | text | Resposta do Eros |
+
+**CHECK constraint:** `interaction_number BETWEEN 1 AND 6`
+
+### bonus_wishes
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | uuid (PK) | |
+| session_id | uuid (FK) | Sessao do experimento |
+| user_id | uuid (FK) | Usuario que recebeu bonus |
+| etapa | int | Etapa onde o bonus foi concedido |
+| granted_at | timestamp | Data da concessao |
+
+**UNIQUE constraint:** `(session_id, user_id)` — bonus concedido apenas 1 vez por experimento.
 
 ### eros_hints
 | Coluna | Tipo | Descricao |
@@ -273,5 +290,23 @@ Ambos responderam → POST /api/analyze
 ## Acesso Direto ao Banco
 
 ```bash
-PGPASSWORD="1891SeNZiKUx43y2" psql -h db.ljuhtcgldzuuagfeglvi.supabase.co -p 5432 -U postgres -d postgres
+PGPASSWORD="1891SeNZiKUx43y2" psql "host=db.ljuhtcgldzuuagfeglvi.supabase.co port=6543 dbname=postgres user=postgres sslmode=require"
 ```
+
+**Nota:** Usar porta `6543` (transaction mode). Porta 5432 nao aceita conexao direta.
+
+---
+
+## Notas Tecnicas
+
+- **TTS no iOS:** Usa `silence.wav` hack para iniciar AudioContext antes do auto-play
+- **Etapas dinamicas:** Carregadas do banco (`etapas_config`) com fallback para array hardcoded
+- **RLS bypass:** Operacoes administrativas usam `createAdminClient()` com service role key
+- **RLS nota:** Tabela `respostas` nao tem policy de UPDATE — endpoints que fazem update (como autorizar) devem usar admin client
+- **Deteccao de criador:** Funcao `isPerguntaSobreCriador()` com 25+ padroes regex para detectar perguntas sobre quem criou Eros
+- **Deteccao de bonus:** 12 padroes regex em `isAskingForMoreWishes()` para detectar pedidos de mais desejos em portugues
+- **Bonus de desejos:** Ao pedir mais desejos dentro dos 3 primeiros, Eros concede +1 (total 4). Mensagem hardcoded. Concedido apenas 1 vez por experimento (tabela `bonus_wishes`)
+- **Countdown timer:** Proxima etapa liberada as 20h do dia seguinte (`CountdownTimer` component)
+- **Analise auto-recovery:** Se ambos responderam mas analise esta faltando, e triggerada automaticamente ao revisitar a etapa
+- **Analise independente de autorizacao:** O `/api/analyze` busca respostas direto do banco com admin client, independente do toggle de autorizacao de exibicao
+- **Sandbox admin:** Endpoint `/api/admin/test-genie` espelha logica do genie sem salvar dados no banco

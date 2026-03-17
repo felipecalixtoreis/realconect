@@ -68,6 +68,48 @@
 
 ---
 
+### Sessao 3 — Countdown, Bonus de Desejos, Sandbox e Correcoes
+
+**Funcionalidades:**
+
+1. **Countdown Timer** — Proxima etapa liberada as 20h do dia seguinte
+   - Componente `CountdownTimer` com animacao e destaque visual
+   - Funcao `isEtapaBloqueadaPorTempo()` verifica bloqueio temporal
+   - Dashboard e pagina de etapa respeitam o bloqueio
+
+2. **Sistema de Bonus de Desejos** — +1 desejo extra se o participante pedir
+   - 12 padroes regex para detectar pedidos de mais desejos em portugues
+   - Mensagem hardcoded do Eros ao conceder bonus (texto personalizado para Samira)
+   - Tabela `bonus_wishes` com UNIQUE(session_id, user_id) — 1 bonus por experimento
+   - `GenieChat` exibe contador dinamico "Pedido X de 4" quando bonus ativo
+
+3. **Sandbox Admin para testar Eros** — Secao "Testar Eros — Sandbox" no painel admin
+   - Endpoint `/api/admin/test-genie` espelha logica real sem salvar dados
+   - Audio TTS funcional no sandbox via `HTMLAudioElement`
+   - Detecta bonus, mostra mensagem hardcoded, contador de desejos
+
+4. **Humanizacao do Eros** — Variacao nas aberturas de resposta
+   - Regra no prompt: NUNCA comecar com "Ah," como primeira palavra
+   - 10+ exemplos de aberturas variadas no system prompt
+   - Instrucao para rotacionar entre estilos de abertura
+
+**Correcoes:**
+
+1. **Analise de compatibilidade nao gerada na etapa 2**
+   - Causa: `/api/analyze` recebia `resposta_user1` do frontend, mas vinha `null` quando o outro usuario nao autorizou exibicao
+   - Correcao: API agora busca respostas direto do banco com admin client, independente de autorizacao
+   - Adicional: auto-recovery — ao visitar etapa com analise faltando, e triggerada automaticamente
+
+2. **Toggle de autorizacao nao persistia**
+   - Causa: Tabela `respostas` tem RLS para INSERT e SELECT, mas NAO para UPDATE
+   - Correcao: Endpoint `/api/resposta/autorizar` agora usa admin client
+
+3. **Padroes de deteccao de bonus insuficientes**
+   - Frases como "Preciso de mais um desejo" e "Voce nao me deu 3 desejos, quero mais 3" nao eram detectadas
+   - Correcao: Expandidos de 8 para 12 padroes regex, incluindo "mais um/uma", "preciso de mais", "nao me deu", "quero mais \\d"
+
+---
+
 ## Componentes Principais
 
 | Componente | Arquivo | Funcao |
@@ -75,7 +117,8 @@
 | ErosAvatar | `src/components/ErosAvatar.tsx` | Avatar animado + saudacao + TTS auto-play |
 | ErosFloatingHint | `src/components/ErosFloatingHint.tsx` | Botao flutuante para dica do Eros |
 | EtapaCard | `src/components/EtapaCard.tsx` | Card de pergunta/resposta por etapa |
-| GenieChat | `src/components/GenieChat.tsx` | Chat dos 3 desejos com Eros |
+| GenieChat | `src/components/GenieChat.tsx` | Chat dos 3+1 desejos com Eros (bonus) |
+| CountdownTimer | `src/components/CountdownTimer.tsx` | Countdown para proxima etapa (20h) |
 | OracleOfEros | `src/components/OracleOfEros.tsx` | Visualizacao animada do oraculo |
 | FinalResult | `src/components/FinalResult.tsx` | Tela de resultado final |
 | CompatibilityChart | `src/components/CompatibilityChart.tsx` | Grafico de indices |
@@ -97,7 +140,8 @@
 | `/api/analyze/final` | POST | Resumo final (6 etapas completas) |
 | `/api/eros-greeting` | GET | Saudacao do Eros |
 | `/api/eros-hint` | GET/POST | Dica do Eros (1 por etapa) |
-| `/api/genie` | GET/POST | Chat dos 3 desejos |
+| `/api/genie` | GET/POST | Chat dos 3+1 desejos (bonus) |
+| `/api/admin/test-genie` | POST | Sandbox Eros (nao salva dados) |
 | `/api/tts` | POST | Text-to-Speech via ElevenLabs |
 | `/api/etapas` | GET | Config das etapas (publico) |
 | `/api/progresso-publico` | GET | Progresso geral (publico) |

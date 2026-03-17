@@ -97,12 +97,35 @@ Gere uma dica personalizada para {nome} sobre como refletir para responder esta 
 
 ---
 
-## 3. Chat com Eros — 3 Desejos (`chatComEros`)
+## 3. Chat com Eros — 3+1 Desejos (`chatComEros`)
 
 **Rota:** `GET/POST /api/genie`
 **Temperatura:** 0.85
 **Max tokens:** 250
-**Limite:** 3 interacoes por etapa por usuario (salvo em `genie_interactions`)
+**Limite:** 3 interacoes por etapa (ou 4 com bonus). Salvo em `genie_interactions`.
+
+### Sistema de Bonus de Desejos
+
+Quando o participante pede mais desejos dentro dos 3 primeiros, Eros concede +1 extra (total 4). Concedido apenas 1 vez por experimento (tabela `bonus_wishes`).
+
+**12 padroes regex de deteccao:**
+- `mais (3|tres) (desejos|pedidos)`
+- `quero mais (desejos|pedidos)`
+- `quero mais \d`
+- `(de|da|conceda) mais (desejos|pedidos)`
+- `(3|tres) (desejos|pedidos) (extras|a mais)`
+- `mais (um|uma)? (desejos|pedidos)`
+- `pedir mais (desejos|pedidos)`
+- `desejo (ter)? mais (desejos|pedidos)`
+- `aumentar (os)? (desejos|pedidos)`
+- `preciso (de)? mais (um)? (desejo|pedido)`
+- `nao me deu \d? (desejos|pedidos)`
+- `mais (um|uma) (desejo|pedido)`
+
+**Mensagem hardcoded do Eros ao conceder bonus:**
+```
+Esta será a única vez que irei permitir que você tome atalhos para obter sabedoria. Não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro. Então agora, antes de conceder um desejo extra, quem pergunta sou eu! Você está conseguindo perceber, Samira? Acha que está pronta para o que pode acontecer? E olha... eu sei... sei que já pensou nisso.
+```
 
 ### Deteccao especial: Pergunta sobre o criador
 
@@ -152,6 +175,7 @@ Regras:
 - NUNCA use linguagem romântica apelativa como "chama entre vocês", "paixão ardente", "almas gêmeas", "destino amoroso"
 - O tom deve ser filosófico e misterioso, como um oráculo, não como um conselheiro sentimental
 - Pode mencionar conexão, mas de forma sutil — como quem fala sobre a gravidade entre dois astros, não sobre um casal
+- NUNCA comece a resposta com "Ah," como primeira palavra — varie as aberturas (ex: "Minha cara {nome}...", "Sabe, {nome}...", "{nome}, voce...", "Interessante...", etc.)
 
 {contextoAdmin — conhecimentos sobre o usuario}
 {perfilOutro — conhecimentos sobre o outro participante}
