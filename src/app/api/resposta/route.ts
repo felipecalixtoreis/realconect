@@ -17,9 +17,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const admin = createAdminClient()
+
     // Check daily limit (1 response per day) unless admin override
     if (!skip_daily_limit) {
-      const admin = createAdminClient()
       const today = new Date()
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
@@ -75,6 +76,21 @@ export async function POST(request: NextRequest) {
     const respostaOutroAutorizada = otherResponse?.autorizar_exibicao
       ? otherResponse.resposta
       : null
+
+    // Auto-advance etapa_atual so the next stage becomes visible
+    // (the countdown timer still controls WHEN the user can access it)
+    const { data: sessionData } = await admin
+      .from('experiment_session')
+      .select('etapa_atual')
+      .eq('id', session_id)
+      .single()
+
+    if (sessionData && etapa >= sessionData.etapa_atual && etapa < 6) {
+      await admin
+        .from('experiment_session')
+        .update({ etapa_atual: etapa + 1 })
+        .eq('id', session_id)
+    }
 
     return NextResponse.json({
       resposta: data,
