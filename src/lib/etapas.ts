@@ -31,7 +31,7 @@ export const ETAPAS: Etapa[] = [
     pergunta: "Qual ideia filosófica ou científica mais mudou sua forma de ver o mundo?",
     tipoResposta: 'texto',
     maxCaracteres: 300,
-    imagemUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80",
+    imagemUrl: "https://images.unsplash.com/photo-1643816276725-1286595d1598?w=800&q=80",
     tipoIndice: "intelectual"
   },
   {
