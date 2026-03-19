@@ -60,7 +60,10 @@ export default function AdminPage() {
   const testAudioCache = useRef<Map<string, string>>(new Map())
   const testAudioRef = useRef<HTMLAudioElement | null>(null)
 
-  useEffect(() => { loadData(); loadEtapas(); loadHintOverrides() }, [])
+  // Closure responses
+  const [closureResponses, setClosureResponses] = useState<any[]>([])
+
+  useEffect(() => { loadData(); loadEtapas(); loadHintOverrides(); loadClosureResponses() }, [])
 
   // Auto-fill hint text when selecting a user+stage that already has an override
   useEffect(() => {
@@ -149,6 +152,16 @@ export default function AdminPage() {
     }
   }
 
+  const loadClosureResponses = async () => {
+    try {
+      const res = await fetch('/api/admin/closure')
+      const data = await res.json()
+      if (data.responses) setClosureResponses(data.responses)
+    } catch {
+      // ignore
+    }
+  }
+
   const handleSaveHint = async () => {
     if (!hintUser || !hintText.trim()) {
       showMessage('Selecione o participante e escreva a dica', 'error')
@@ -222,6 +235,18 @@ export default function AdminPage() {
     })
     const data = await res.json()
     showMessage(data.message || 'Etapa atualizada!', 'success')
+    loadData()
+  }
+
+  const handleEncerrarExperimento = async (sessionId: string) => {
+    if (!confirm('Tem certeza que deseja ENCERRAR este experimento? Ambos os participantes verão a mensagem final do Eros.')) return
+    const res = await fetch('/api/admin/session', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, status: 'encerrado' }),
+    })
+    const data = await res.json()
+    showMessage(data.message || 'Experimento encerrado!', 'success')
     loadData()
   }
 
@@ -571,7 +596,7 @@ export default function AdminPage() {
                 <div>
                   <p className="text-white text-sm font-mono">{s.id.slice(0, 12)}...</p>
                   <p className="text-gray-400 text-xs mt-1">
-                    {getProfileName(s.user1_id)} ↔ {getProfileName(s.user2_id)} | Status: <span className={s.status === 'ativo' ? 'text-green-400' : 'text-blue-400'}>{s.status}</span>
+                    {getProfileName(s.user1_id)} ↔ {getProfileName(s.user2_id)} | Status: <span className={s.status === 'ativo' ? 'text-green-400' : s.status === 'encerrado' ? 'text-red-400' : 'text-blue-400'}>{s.status}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -588,10 +613,36 @@ export default function AdminPage() {
                   ))}
                 </div>
               </div>
+              {s.status === 'ativo' && (
+                <button
+                  onClick={() => handleEncerrarExperimento(s.id)}
+                  className="mt-2 px-4 py-2 bg-red-900/40 border border-red-500/30 text-red-400 text-xs rounded-lg hover:bg-red-900/60 hover:border-red-500/50 transition"
+                >
+                  Encerrar Experimento
+                </button>
+              )}
+              {s.status === 'encerrado' && (
+                <p className="mt-2 text-red-400/60 text-xs italic">Experimento encerrado — mensagem final ativa</p>
+              )}
             </div>
           ))}
           {sessions.length === 0 && <p className="text-gray-500 text-sm">Nenhuma sessão criada ainda.</p>}
         </div>
+
+        {/* ===== PALAVRAS FINAIS (ENCERRAMENTO) ===== */}
+        {closureResponses.length > 0 && (
+          <div className="bg-slate-900/50 border border-red-800/30 rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">📕 Livro das Estrelas — Palavras Finais</h2>
+            {closureResponses.map((cr: any) => (
+              <div key={cr.id} className="bg-slate-800/60 border border-purple-500/10 rounded-xl p-4">
+                <p className="text-purple-400 text-xs font-semibold mb-2">
+                  {cr.profiles?.nome || 'Participante'} — {new Date(cr.criado_em).toLocaleString('pt-BR')}
+                </p>
+                <p className="text-gray-300 italic text-sm leading-relaxed">&ldquo;{cr.resposta}&rdquo;</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ===== PERGUNTAS DAS ETAPAS ===== */}
         {etapasConfig.length > 0 && (

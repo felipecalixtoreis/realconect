@@ -70,18 +70,25 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { session_id, etapa_atual } = await request.json()
+    const { session_id, etapa_atual, status } = await request.json()
     const admin = createAdminClient()
+
+    const updateData: Record<string, any> = {}
+    if (etapa_atual !== undefined) updateData.etapa_atual = etapa_atual
+    if (status !== undefined) updateData.status = status
 
     const { error } = await admin
       .from('experiment_session')
-      .update({ etapa_atual })
+      .update(updateData)
       .eq('id', session_id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    if (status === 'encerrado') {
+      return NextResponse.json({ message: 'Experimento encerrado com sucesso' })
+    }
     return NextResponse.json({ message: `Etapa atualizada para ${etapa_atual}` })
   } catch (error) {
     console.error('Update session error:', error)

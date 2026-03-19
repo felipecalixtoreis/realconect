@@ -8,6 +8,7 @@ import { Timeline } from '@/components/Timeline'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { ErosAvatar } from '@/components/ErosAvatar'
 import { CountdownTimer, isEtapaBloqueadaPorTempo } from '@/components/CountdownTimer'
+import { ExperimentClosure } from '@/components/ExperimentClosure'
 
 interface SessionData {
   session: any
@@ -80,6 +81,17 @@ export default function DashboardPage() {
           Seu experimento ainda não foi configurado. Aguarde o organizador criar a sessão para vocês.
         </p>
       </div>
+    )
+  }
+
+  // Show closure screen if experiment is encerrado
+  if (data.session?.status === 'encerrado' && userId) {
+    return (
+      <ExperimentClosure
+        sessionId={data.session.id}
+        userId={userId}
+        nomeUsuario={nomeUsuario}
+      />
     )
   }
 
