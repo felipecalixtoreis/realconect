@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { audioManager } from '@/lib/audioManager'
 
 interface ExperimentClosureProps {
   sessionId: string
@@ -29,7 +30,7 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
   const [loading, setLoading] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [audioPlayed, setAudioPlayed] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioRef = useRef<string | null>(null)
   const hasAutoPlayed = useRef(false)
 
   const isFelipe = nomeUsuario.startsWith('Felipe')
@@ -60,7 +61,7 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
     return () => clearTimeout(timer)
   }, [])
 
-  // Auto-play TTS
+  // Auto-play TTS using audioManager (iOS compatible)
   const playAudio = useCallback(async (text: string) => {
     try {
       setIsSpeaking(true)
@@ -71,23 +72,24 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
       })
       if (!res.ok) {
         setIsSpeaking(false)
+        setAudioPlayed(true)
         return
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audioRef.current = audio
-      audio.onended = () => {
-        setIsSpeaking(false)
-        setAudioPlayed(true)
-        URL.revokeObjectURL(url)
-      }
-      audio.onerror = () => {
-        setIsSpeaking(false)
-        setAudioPlayed(true)
-        URL.revokeObjectURL(url)
-      }
-      audio.play()
+      audioRef.current = url
+      await audioManager?.play(url, {
+        onEnded: () => {
+          setIsSpeaking(false)
+          setAudioPlayed(true)
+          URL.revokeObjectURL(url)
+        },
+        onError: () => {
+          setIsSpeaking(false)
+          setAudioPlayed(true)
+          URL.revokeObjectURL(url)
+        },
+      })
     } catch (e) {
       console.error('TTS error:', e)
       setIsSpeaking(false)
@@ -107,8 +109,9 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
+      audioManager?.stop()
       if (audioRef.current) {
-        audioRef.current.pause()
+        URL.revokeObjectURL(audioRef.current)
         audioRef.current = null
       }
     }
