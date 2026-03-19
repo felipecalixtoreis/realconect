@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [visible, setVisible] = useState(false)
   const [ultimaRespostaCriadoEm, setUltimaRespostaCriadoEm] = useState<string | null>(null)
   const [etapaBloqueada, setEtapaBloqueada] = useState(false)
+  const [closureStatus, setClosureStatus] = useState<{ visitado_em: string | null; resposta: string | null } | null>(null)
+  const [outroNome, setOutroNome] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -37,13 +39,26 @@ export default function DashboardPage() {
       const res = await fetch('/api/session')
       const sessionData = await res.json()
 
-      // Get user's display name
+      // Get user's display name and the other participant's name
       if (sessionData.session) {
         if (sessionData.session.user1?.id === user.id) {
           setNomeUsuario(sessionData.session.user1.nome || 'Participante')
+          setOutroNome(sessionData.session.user2?.nome || 'o outro participante')
         } else if (sessionData.session.user2?.id === user.id) {
           setNomeUsuario(sessionData.session.user2.nome || 'Participante')
+          setOutroNome(sessionData.session.user1?.nome || 'o outro participante')
         }
+      }
+
+      // If session is encerrado, fetch closure visit status of the other user
+      if (sessionData.session?.status === 'encerrado') {
+        try {
+          const closureRes = await fetch(`/api/experiment-closure/status?session_id=${sessionData.session.id}`)
+          if (closureRes.ok) {
+            const closureData = await closureRes.json()
+            setClosureStatus(closureData)
+          }
+        } catch {}
       }
 
       // Calculate time lock based on user's last response
@@ -105,6 +120,69 @@ export default function DashboardPage() {
         </p>
         <h1 className="text-3xl font-bold text-white">Sua Jornada de Conexão</h1>
       </div>
+
+      {/* Closure status indicator (only for Felipe when session is encerrado) */}
+      {data.session.status === 'encerrado' && closureStatus && (
+        <div
+          className={`transition-all duration-700 delay-200 ${
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+          }`}
+        >
+          <div className={`rounded-2xl p-5 border ${
+            closureStatus.resposta
+              ? 'bg-emerald-950/30 border-emerald-500/30'
+              : closureStatus.visitado_em
+              ? 'bg-amber-950/30 border-amber-500/30'
+              : 'bg-slate-900/50 border-slate-700/30'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                closureStatus.resposta
+                  ? 'bg-emerald-400 animate-pulse'
+                  : closureStatus.visitado_em
+                  ? 'bg-amber-400 animate-pulse'
+                  : 'bg-slate-600'
+              }`} />
+              <div className="flex-1">
+                {closureStatus.resposta ? (
+                  <>
+                    <p className="text-emerald-300 text-sm font-semibold">
+                      {outroNome} deixou palavras no Livro das Estrelas
+                    </p>
+                    <p className="text-emerald-200/60 text-xs mt-1">
+                      Respondeu em {new Date(closureStatus.visitado_em!).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <div className="mt-3 bg-slate-900/60 rounded-xl p-4 border border-emerald-500/10">
+                      <p className="text-gray-300 text-sm italic leading-relaxed">&ldquo;{closureStatus.resposta}&rdquo;</p>
+                    </div>
+                  </>
+                ) : closureStatus.visitado_em ? (
+                  <>
+                    <p className="text-amber-300 text-sm font-semibold">
+                      {outroNome} visualizou a mensagem final de Eros
+                    </p>
+                    <p className="text-amber-200/60 text-xs mt-1">
+                      Acessou em {new Date(closureStatus.visitado_em).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <p className="text-amber-200/40 text-xs mt-1 italic">
+                      Ainda não deixou palavras finais.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm font-semibold">
+                      {outroNome} ainda não acessou o experimento
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1 italic">
+                      Você será notificado quando houver atividade.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Eros greeting */}
       {nomeUsuario && (
