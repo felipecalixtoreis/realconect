@@ -41,7 +41,6 @@ export default function Home() {
   const [etapaAtual, setEtapaAtual] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [encerrado, setEncerrado] = useState(false)
   const router = useRouter()
 
   // Check auth and load progress
@@ -53,9 +52,6 @@ export default function Home() {
         const pubData = await pubRes.json()
         if (pubData.etapa_desbloqueada) {
           setEtapaAtual(pubData.etapa_desbloqueada)
-        }
-        if (pubData.encerrado) {
-          setEncerrado(true)
         }
 
         // Then: check if logged in for personalized progress
@@ -158,45 +154,35 @@ export default function Home() {
             {FRAGMENTOS.map((frag, i) => {
               const isUnlocked = etapaAtual >= frag.etapaMinima
               const isFirst = frag.etapaMinima === 0
-              const isLostForever = !isUnlocked && encerrado && frag.etapaMinima > 0
 
               // Most recently unlocked fragment gets special highlight
-              const isLatestUnlock = isUnlocked && !isFirst && etapaAtual === frag.etapaMinima && !encerrado
+              const isLatestUnlock = isUnlocked && !isFirst && etapaAtual === frag.etapaMinima
 
               return (
-                <span key={i} className="inline relative">
-                  <span
-                    className={`inline transition-all duration-700 ${
-                      isUnlocked
-                        ? isFirst
-                          ? 'text-gray-400'
-                          : isLatestUnlock
-                            ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 font-medium'
-                            : 'text-gray-200 font-light'
-                        : 'text-transparent select-none'
-                    }`}
-                    style={
-                      !isUnlocked
-                        ? {
-                            background: 'linear-gradient(90deg, rgba(124,58,237,0.15), rgba(236,72,153,0.15))',
-                            borderRadius: '4px',
-                            filter: 'blur(6px)',
-                            WebkitUserSelect: 'none',
-                            padding: '0 2px',
-                          }
-                        : undefined
-                    }
-                  >
-                    {isUnlocked ? frag.texto : frag.texto.replace(/[a-záàâãéèêíïóôõöúçñ]/gi, '█')}
-                  </span>
-                  {isLostForever && (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-red-400/50 text-xs sm:text-sm font-medium tracking-wider italic">
-                        perdido para sempre
-                      </span>
-                    </span>
-                  )}
-                  {' '}
+                <span
+                  key={i}
+                  className={`inline transition-all duration-700 ${
+                    isUnlocked
+                      ? isFirst
+                        ? 'text-gray-400'
+                        : isLatestUnlock
+                          ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 font-medium'
+                          : 'text-gray-200 font-light'
+                      : 'text-transparent select-none'
+                  }`}
+                  style={
+                    !isUnlocked
+                      ? {
+                          background: 'linear-gradient(90deg, rgba(124,58,237,0.15), rgba(236,72,153,0.15))',
+                          borderRadius: '4px',
+                          filter: 'blur(6px)',
+                          WebkitUserSelect: 'none',
+                          padding: '0 2px',
+                        }
+                      : undefined
+                  }
+                >
+                  {isUnlocked ? frag.texto : frag.texto.replace(/[a-záàâãéèêíïóôõöúçñ]/gi, '█')}{' '}
                 </span>
               )
             })}
@@ -216,10 +202,7 @@ export default function Home() {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
               <span className="text-left">
-                {encerrado
-                ? 'O experimento foi encerrado. Os trechos não desbloqueados foram perdidos para sempre.'
-                : 'Este parágrafo possui informações que só podem ser reveladas à medida que o processo do experimento vai sendo desbloqueado pelos participantes.'
-              }
+                Este parágrafo possui informações que só podem ser reveladas à medida que o processo do experimento vai sendo desbloqueado pelos participantes.
               </span>
             </div>
             {isLoggedIn && etapaAtual > 0 && (
@@ -249,10 +232,7 @@ export default function Home() {
             className="group relative px-10 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-white font-semibold text-lg shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105"
           >
             <span className="relative z-10">
-              {encerrado
-                ? 'O Experimento foi Encerrado'
-                : isLoggedIn ? 'Continuar o Experimento' : 'Participar do Experimento'
-              }
+              {isLoggedIn ? 'Continuar o Experimento' : 'Participar do Experimento'}
             </span>
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
           </button>
