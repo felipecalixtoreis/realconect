@@ -96,16 +96,10 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
       return
     }
 
-    // If hint was used and we have text
+    // If hint was used and we have text — always replay the hint text
     if (hintUsed && hintText) {
-      if (hasHeardOnce) {
-        // Second+ click: play encouragement message
-        playAudio(REPEAT_MESSAGE, true)
-      } else {
-        // First replay: play original hint again
-        setHasHeardOnce(true)
-        playAudio(hintText)
-      }
+      setHasHeardOnce(true)
+      playAudio(hintText)
       return
     }
 
@@ -142,10 +136,10 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   if (!loaded) return null
 
   return (
-    <div className="fixed top-20 right-8 z-50 flex flex-col items-center gap-2">
-      {/* Tooltip */}
-      {showTooltip && !isSpeaking && !audioLoading && (
-        <div className="animate-fadeIn bg-indigo-950/90 border border-indigo-500/30 rounded-xl px-4 py-2 text-xs text-indigo-200 max-w-[180px] text-center backdrop-blur-sm">
+    <div className="fixed top-20 right-4 sm:right-8 z-50 flex flex-col items-center gap-2">
+      {/* Tooltip — always visible on first load if hint not used */}
+      {(showTooltip || (!hintUsed && !isSpeaking && !audioLoading)) && (
+        <div className="animate-fadeIn bg-indigo-950/90 border border-indigo-500/30 rounded-xl px-4 py-2 text-xs text-indigo-200 max-w-[180px] text-center backdrop-blur-sm shadow-lg shadow-indigo-500/20">
           {hintUsed
             ? 'Consultar Eros'
             : 'Pedir uma dica a Eros'}
@@ -191,12 +185,12 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
           </div>
         )}
 
-        <div className={`relative w-16 h-16 md:w-18 md:h-18 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+        <div className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
           isSpeaking
             ? 'border-indigo-400 bg-gradient-to-br from-indigo-600/70 to-purple-700/70 shadow-xl shadow-indigo-500/40 animate-eros-speak'
             : hintUsed
-            ? 'border-indigo-500/30 bg-gradient-to-br from-indigo-800/40 to-purple-900/40 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/20 animate-eros-breathe'
-            : 'border-indigo-500/50 bg-gradient-to-br from-indigo-700/50 to-purple-800/50 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-500/30 animate-eros-breathe'
+            ? 'border-indigo-500/30 bg-gradient-to-br from-indigo-800/40 to-purple-900/40 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/20 animate-eros-breathe shadow-lg shadow-indigo-500/10'
+            : 'border-indigo-400/60 bg-gradient-to-br from-indigo-600/60 to-purple-700/60 hover:border-indigo-400/80 shadow-xl shadow-indigo-500/30 animate-pulse'
         }`}>
           {/* Inner glow */}
           <div className={`absolute inset-0 rounded-full transition-opacity duration-500 ${
