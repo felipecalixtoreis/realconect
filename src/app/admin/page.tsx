@@ -250,6 +250,18 @@ export default function AdminPage() {
     loadData()
   }
 
+  const handleReativarExperimento = async (sessionId: string) => {
+    if (!confirm('Reativar este experimento? Os participantes voltarão a ver o dashboard normalmente.')) return
+    const res = await fetch('/api/admin/session', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, status: 'ativo' }),
+    })
+    const data = await res.json()
+    showMessage(data.message || 'Experimento reativado!', 'success')
+    loadData()
+  }
+
   const handleDeleteResposta = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta resposta? Os índices dessa etapa também serão apagados.')) return
     const res = await fetch('/api/admin/respostas', {
@@ -622,7 +634,15 @@ export default function AdminPage() {
                 </button>
               )}
               {s.status === 'encerrado' && (
-                <p className="mt-2 text-red-400/60 text-xs italic">Experimento encerrado — mensagem final ativa</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <p className="text-red-400/60 text-xs italic">Experimento encerrado — mensagem final ativa</p>
+                  <button
+                    onClick={() => handleReativarExperimento(s.id)}
+                    className="px-3 py-1.5 bg-green-900/40 border border-green-500/30 text-green-400 text-xs rounded-lg hover:bg-green-900/60 hover:border-green-500/50 transition"
+                  >
+                    Reativar
+                  </button>
+                </div>
               )}
             </div>
           ))}
