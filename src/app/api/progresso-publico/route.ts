@@ -7,17 +7,17 @@ export async function GET() {
   try {
     const admin = createAdminClient()
 
-    // Get the most recent active session
+    // Get the most recent session (active or encerrado)
     const { data: session } = await admin
       .from('experiment_session')
-      .select('id, etapa_atual')
-      .eq('status', 'ativo')
+      .select('id, etapa_atual, status')
+      .in('status', ['ativo', 'encerrado'])
       .order('criado_em', { ascending: false })
       .limit(1)
       .single()
 
     if (!session) {
-      return NextResponse.json({ etapa_atual: 0, respostas_count: 0 })
+      return NextResponse.json({ etapa_atual: 0, respostas_count: 0, encerrado: false })
     }
 
     // Count completed responses (both participants)
@@ -58,6 +58,7 @@ export async function GET() {
       etapa_atual: session.etapa_atual,
       etapa_desbloqueada: etapaDesbloqueada,
       respostas_count: count || 0,
+      encerrado: session.status === 'encerrado',
     })
   } catch (error) {
     return NextResponse.json({ etapa_atual: 0, etapa_desbloqueada: 0 })
