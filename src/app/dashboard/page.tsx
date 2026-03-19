@@ -84,17 +84,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Show closure screen if experiment is encerrado
-  if (data.session?.status === 'encerrado' && userId) {
-    return (
-      <ExperimentClosure
-        sessionId={data.session.id}
-        userId={userId}
-        nomeUsuario={nomeUsuario}
-      />
-    )
-  }
-
   const { session, respostas, indices, timeline } = data
   const minhasRespostas = respostas.filter(r => r.user_id === userId)
   const etapasCompletasPorMim = minhasRespostas.map(r => r.etapa)

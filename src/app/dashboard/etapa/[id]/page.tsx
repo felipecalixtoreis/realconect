@@ -10,6 +10,7 @@ import { LoadingScreen } from '@/components/LoadingScreen'
 import { GenieChat } from '@/components/GenieChat'
 import { ErosFloatingHint } from '@/components/ErosFloatingHint'
 import { CountdownTimer, isEtapaBloqueadaPorTempo } from '@/components/CountdownTimer'
+import { ExperimentClosure } from '@/components/ExperimentClosure'
 import { audioManager } from '@/lib/audioManager'
 
 export default function EtapaPage() {
@@ -539,6 +540,28 @@ export default function EtapaPage() {
             ← Voltar ao Dashboard
           </button>
         </div>
+      </div>
+    )
+  }
+
+  // Show closure screen if experiment is encerrado and user hasn't answered
+  if (sessionData?.status === 'encerrado' && !jaRespondeu && sessionId && userId) {
+    return (
+      <div className="py-8">
+        <ExperimentClosure
+          sessionId={sessionId}
+          userId={userId}
+          nomeUsuario={nomeUsuario}
+        />
+
+        {/* Eros floating hint */}
+        {nomeUsuario && (
+          <ErosFloatingHint
+            sessionId={sessionId}
+            etapa={etapaNumero}
+            nomeUsuario={nomeUsuario}
+          />
+        )}
       </div>
     )
   }
