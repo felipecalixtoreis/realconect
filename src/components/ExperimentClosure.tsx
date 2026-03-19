@@ -137,7 +137,7 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
   useEffect(() => {
     if (mounted && !hasAutoPlayed.current && !loading) {
       hasAutoPlayed.current = true
-      const timer = setTimeout(() => playAudio(farewellMessage), 2000)
+      const timer = setTimeout(() => playAudio(farewellMessage), 800)
       return () => clearTimeout(timer)
     }
     return () => {}

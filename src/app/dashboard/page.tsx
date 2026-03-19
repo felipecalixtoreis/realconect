@@ -8,7 +8,7 @@ import { Timeline } from '@/components/Timeline'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { ErosAvatar } from '@/components/ErosAvatar'
 import { CountdownTimer, isEtapaBloqueadaPorTempo } from '@/components/CountdownTimer'
-import { ExperimentClosure } from '@/components/ExperimentClosure'
+import { audioManager } from '@/lib/audioManager'
 
 interface SessionData {
   session: any
@@ -146,7 +146,12 @@ export default function DashboardPage() {
               }}
             >
               <button
-                onClick={() => !isBloqueadaTempo && router.push(`/dashboard/etapa/${etapa.numero}`)}
+                onClick={() => {
+                  if (isBloqueadaTempo) return
+                  // Unlock audio on user gesture (iOS Safari requires this)
+                  try { audioManager?.unlockFromGesture() } catch {}
+                  router.push(`/dashboard/etapa/${etapa.numero}`)
+                }}
                 disabled={isBloqueadaTempo}
                 className={`w-full text-left p-4 sm:p-6 rounded-2xl border transition-all ${
                   respondida

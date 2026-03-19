@@ -145,6 +145,16 @@ class AudioManager {
   get isUnlocked(): boolean {
     return this.unlocked
   }
+
+  /**
+   * Manually unlock audio from a user gesture (click/touch).
+   * Call this from onClick handlers before navigating to pages that need auto-play.
+   */
+  unlockFromGesture() {
+    if (!this.unlocked) {
+      this.unlock()
+    }
+  }
 }
 
 // Singleton instance
