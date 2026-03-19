@@ -136,13 +136,14 @@ export function ErosFloatingHint({ sessionId, etapa, nomeUsuario }: ErosFloating
   if (!loaded) return null
 
   return (
-    <div className="fixed top-20 right-4 sm:right-8 z-50 flex flex-col items-center gap-2">
-      {/* Tooltip — always visible on first load if hint not used */}
-      {(showTooltip || (!hintUsed && !isSpeaking && !audioLoading)) && (
-        <div className="animate-fadeIn bg-indigo-950/90 border border-indigo-500/30 rounded-xl px-4 py-2 text-xs text-indigo-200 max-w-[180px] text-center backdrop-blur-sm shadow-lg shadow-indigo-500/20">
+    <div className="fixed top-20 right-4 sm:right-8 z-50 flex items-center gap-3">
+      {/* Arrow callout — always visible pointing to button */}
+      {!isSpeaking && !audioLoading && (
+        <div className="animate-fadeIn bg-indigo-950/95 border border-indigo-400/40 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-indigo-200 backdrop-blur-sm shadow-xl shadow-indigo-500/25 whitespace-nowrap font-medium flex items-center gap-2">
           {hintUsed
             ? 'Consultar Eros'
-            : 'Pedir uma dica a Eros'}
+            : 'Peça uma dica ao Eros aqui'}
+          <span className="text-indigo-400 text-lg animate-pulse">→</span>
         </div>
       )}
 
