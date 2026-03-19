@@ -61,37 +61,74 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
     return () => clearTimeout(timer)
   }, [])
 
-  // Auto-play TTS using audioManager (iOS compatible)
+  // Play TTS using audioManager (iOS compatible) with fallback
   const playAudio = useCallback(async (text: string) => {
     try {
       setIsSpeaking(true)
+      setAudioPlayed(false)
+      console.log('[Closure] Requesting TTS, text length:', text.length)
+
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
+
       if (!res.ok) {
+        console.error('[Closure] TTS API failed:', res.status, await res.text().catch(() => ''))
         setIsSpeaking(false)
         setAudioPlayed(true)
         return
       }
+
       const blob = await res.blob()
+      console.log('[Closure] Got audio blob:', blob.size, 'bytes, type:', blob.type)
+
+      if (blob.size < 100) {
+        console.error('[Closure] Audio blob too small, likely empty')
+        setIsSpeaking(false)
+        setAudioPlayed(true)
+        return
+      }
+
       const url = URL.createObjectURL(blob)
       audioRef.current = url
-      await audioManager?.play(url, {
-        onEnded: () => {
-          setIsSpeaking(false)
-          setAudioPlayed(true)
-          URL.revokeObjectURL(url)
-        },
-        onError: () => {
-          setIsSpeaking(false)
-          setAudioPlayed(true)
-          URL.revokeObjectURL(url)
-        },
-      })
+
+      const onFinish = () => {
+        console.log('[Closure] Audio playback finished')
+        setIsSpeaking(false)
+        setAudioPlayed(true)
+      }
+
+      if (audioManager && audioManager.isUnlocked) {
+        console.log('[Closure] Using audioManager (unlocked)')
+        await audioManager.play(url, {
+          onEnded: onFinish,
+          onError: () => {
+            console.error('[Closure] audioManager playback error, trying fallback')
+            // Try fallback with new Audio
+            const audio = new Audio(url)
+            audio.onended = onFinish
+            audio.onerror = () => { console.error('[Closure] Fallback also failed'); onFinish() }
+            audio.play().catch(() => onFinish())
+          },
+        })
+      } else {
+        // audioManager not available or not unlocked — use direct Audio
+        console.log('[Closure] audioManager not ready (exists:', !!audioManager, ', unlocked:', audioManager?.isUnlocked, '), using direct Audio')
+        const audio = new Audio(url)
+        audio.onended = onFinish
+        audio.onerror = () => { console.error('[Closure] Direct Audio error'); onFinish() }
+        try {
+          await audio.play()
+          console.log('[Closure] Direct Audio playing')
+        } catch (e) {
+          console.error('[Closure] Direct Audio play() rejected:', e)
+          onFinish()
+        }
+      }
     } catch (e) {
-      console.error('TTS error:', e)
+      console.error('[Closure] TTS error:', e)
       setIsSpeaking(false)
       setAudioPlayed(true)
     }
