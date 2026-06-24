@@ -9,7 +9,8 @@ interface ExperimentClosureProps {
   nomeUsuario: string
 }
 
-const SAMIRA_MESSAGE = `Samira, os astros se moveram enquanto você esteve ausente, e o experimento chegou ao seu último momento. Cumpri minha missão. Antes que eu me cale definitivamente, preciso lhe fazer algumas provocações finais — e elas exigem um tipo de honestidade que talvez você ainda não tenha praticado consigo mesma.
+// Mensagem para a participante (não-Felipe). O nome é dinâmico; nunca hardcoded.
+const participanteMessage = (primeiroNome: string) => `${primeiroNome}, os astros se moveram enquanto você esteve ausente, e o experimento chegou ao seu último momento. Cumpri minha missão. Antes que eu me cale definitivamente, preciso lhe fazer algumas provocações finais — e elas exigem um tipo de honestidade que talvez você ainda não tenha praticado consigo mesma.
 
 Você tem certeza de que consegue perceber a raridade que busca nos pequenos acontecimentos "aleatórios" da vida? Às vezes vocês, humanos, se enganam pensando que sabem o que buscam. Perfeição, talvez. Mera ilusão. Quem muito planeja e aguarda o alinhamento perfeito dos astros, aguarda uma pessoa que não traga defeitos ou situações complicadas, como nos contos de fadas. Mas posso te afirmar que os verdadeiros príncipes existem — só que são discretos, cheios de defeitos, porém perfeitos para encarar os desafios de um mundo cheio de confusões.
 
@@ -34,7 +35,8 @@ export function ExperimentClosure({ sessionId, userId, nomeUsuario }: Experiment
   const hasAutoPlayed = useRef(false)
 
   const isFelipe = nomeUsuario.startsWith('Felipe')
-  const farewellMessage = isFelipe ? FELIPE_MESSAGE : SAMIRA_MESSAGE
+  const primeiroNome = nomeUsuario.split(' ')[0] || nomeUsuario
+  const farewellMessage = isFelipe ? FELIPE_MESSAGE : participanteMessage(primeiroNome)
 
   // Check if user already responded
   useEffect(() => {

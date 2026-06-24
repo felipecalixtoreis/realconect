@@ -24,7 +24,11 @@ function isAskingForMoreWishes(text: string): boolean {
   return BONUS_PATTERNS.some(p => p.test(text))
 }
 
-const BONUS_EROS_MESSAGE = `Esta será a única vez que irei permitir que você tome atalhos para obter sabedoria. Não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro. Então agora, antes de conceder um desejo extra, quem pergunta sou eu! Você está conseguindo perceber, Samira? Acha que está pronta para o que pode acontecer? E olha... eu sei... sei que já pensou nisso.`
+// O nome é dinâmico (primeiro nome do participante); nunca hardcoded.
+function bonusErosMessage(primeiroNome?: string): string {
+  const chamado = primeiroNome ? `, ${primeiroNome}` : ''
+  return `Esta será a única vez que irei permitir que você tome atalhos para obter sabedoria. Não quero ser uma muleta para você, mas quero ser um trampolim que irá lhe permitir mergulhar na imensidão de uma vida cheia de propósitos, com leveza, com alguém que pode viver o extraordinário com você... e para isso não há atalhos, só é preciso coragem, e perceber realmente quem é o outro. Então agora, antes de conceder um desejo extra, quem pergunta sou eu! Você está conseguindo perceber${chamado}? Acha que está pronta para o que pode acontecer? E olha... eu sei... sei que já pensou nisso.`
+}
 
 /**
  * POST /api/admin/test-genie
@@ -55,8 +59,13 @@ export async function POST(request: NextRequest) {
     // ── Detectar pedido de mais desejos ──────────────────────────────
     const count = sandbox_count
     if (isAskingForMoreWishes(pergunta) && count < 3 && !bonus_already_granted) {
+      const { data: bonusProfile } = await admin
+        .from('profiles')
+        .select('nome')
+        .eq('id', user_id)
+        .single()
       return NextResponse.json({
-        resposta: BONUS_EROS_MESSAGE,
+        resposta: bonusErosMessage(bonusProfile?.nome?.split(' ')[0]),
         bonus_just_granted: true,
         detected_bonus_request: true,
         interaction_number: count + 1,

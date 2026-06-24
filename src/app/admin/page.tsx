@@ -1394,7 +1394,7 @@ export default function AdminPage() {
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">🧠 Contexto para IA</h2>
           <p className="text-gray-400 text-sm">
             Adicione informações sobre os participantes que a IA usará para enriquecer as análises.
-            Ex: &quot;Felipe gosta de filosofia estoica&quot;, &quot;Samira valoriza conexões profundas&quot;
+            Ex: &quot;Felipe gosta de filosofia estoica&quot;, &quot;a participante valoriza conexões profundas&quot;
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
