@@ -31,6 +31,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Admin-only routes: somente o Felipe (por user_id, estável). Cobre a página
+  // /admin e as APIs /api/admin/*. Override opcional via env ADMIN_USER_ID.
+  const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '4287ea93-fe79-4b30-bf67-609800f9fc6f'
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
+    if (!user || user.id !== ADMIN_USER_ID) {
+      if (path.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = user ? '/dashboard' : '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Protected routes
   if (
     !user &&
