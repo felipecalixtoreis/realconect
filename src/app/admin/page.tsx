@@ -63,7 +63,40 @@ export default function AdminPage() {
   // Closure responses
   const [closureResponses, setClosureResponses] = useState<any[]>([])
 
+  // Acompanhamento por etapa
+  const [trackSession, setTrackSession] = useState('')
+  const [trackData, setTrackData] = useState<{ respostas: any[]; desejos: any[]; indices: any[] }>({ respostas: [], desejos: [], indices: [] })
+  const [trackLoading, setTrackLoading] = useState(false)
+  const [trackExpanded, setTrackExpanded] = useState<string | null>(null)
+
   useEffect(() => { loadData(); loadEtapas(); loadHintOverrides(); loadClosureResponses() }, [])
+
+  // Seleciona automaticamente a sessão ativa (ou a mais recente) para acompanhamento
+  useEffect(() => {
+    if (sessions.length > 0 && !trackSession) {
+      const ativa = sessions.find((s: any) => s.status === 'ativo') || sessions[0]
+      setTrackSession(ativa.id)
+    }
+  }, [sessions, trackSession])
+
+  useEffect(() => { if (trackSession) loadProgress(trackSession) }, [trackSession])
+
+  const loadProgress = async (sessionId: string) => {
+    if (!sessionId) return
+    setTrackLoading(true)
+    try {
+      const res = await fetch(`/api/admin/progresso?session_id=${sessionId}`)
+      const data = await res.json()
+      if (data.error) {
+        showMessage(data.error, 'error')
+      } else {
+        setTrackData({ respostas: data.respostas || [], desejos: data.desejos || [], indices: data.indices || [] })
+      }
+    } catch {
+      showMessage('Erro ao carregar acompanhamento', 'error')
+    }
+    setTrackLoading(false)
+  }
 
   // Auto-fill hint text when selecting a user+stage that already has an override
   useEffect(() => {
@@ -647,6 +680,149 @@ export default function AdminPage() {
             </div>
           ))}
           {sessions.length === 0 && <p className="text-gray-500 text-sm">Nenhuma sessão criada ainda.</p>}
+        </div>
+
+        {/* ===== ACOMPANHAMENTO POR ETAPA ===== */}
+        <div className="bg-slate-900/50 border border-purple-800/30 rounded-2xl p-6 space-y-5">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2">📊 Acompanhamento por Etapa</h2>
+              <p className="text-gray-400 text-sm mt-1">
+                Veja, etapa por etapa, a participação de cada pessoa: resposta enviada e pedidos ao Eros.
+              </p>
+            </div>
+            <button
+              onClick={() => loadProgress(trackSession)}
+              disabled={!trackSession || trackLoading}
+              className="px-3 py-1.5 bg-slate-700 text-gray-300 rounded-lg text-xs font-medium hover:bg-slate-600 transition disabled:opacity-50"
+            >
+              {trackLoading ? '⏳ Atualizando...' : '🔄 Atualizar'}
+            </button>
+          </div>
+
+          <select
+            value={trackSession}
+            onChange={(e) => setTrackSession(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500/50 focus:outline-none"
+          >
+            <option value="">Selecione a sessão</option>
+            {sessions.map((s: any) => (
+              <option key={s.id} value={s.id}>
+                {getProfileName(s.user1_id)} ↔ {getProfileName(s.user2_id)} — {s.status} ({s.id.slice(0, 8)}...)
+              </option>
+            ))}
+          </select>
+
+          {(() => {
+            const sObj = sessions.find((s: any) => s.id === trackSession)
+            if (!sObj) {
+              return <p className="text-gray-500 text-sm">Selecione uma sessão para ver o acompanhamento.</p>
+            }
+            const participantes = [sObj.user1_id, sObj.user2_id].filter(Boolean)
+            const etapasList = (etapasConfig.length > 0 ? etapasConfig : ETAPAS)
+
+            return (
+              <>
+                {/* Resumo: progresso por participante */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {participantes.map((uid: string) => {
+                    const done = etapasList.filter((e: any) =>
+                      trackData.respostas.some((r: any) => r.etapa === e.numero && r.user_id === uid)
+                    ).length
+                    const total = etapasList.length || 6
+                    return (
+                      <div key={uid} className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white font-semibold text-sm">{getProfileName(uid)}</span>
+                          <span className="text-purple-300 text-xs font-semibold">{done}/{total} etapas</span>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all"
+                            style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Detalhe por etapa */}
+                <div className="space-y-3">
+                  {etapasList.map((e: any) => {
+                    const n = e.numero
+                    const indice = trackData.indices.find((i: any) => i.etapa === n)
+                    return (
+                      <div key={n} className="bg-slate-800/40 rounded-xl border border-slate-700/40 p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{n}</span>
+                          <h3 className="text-white text-sm font-semibold">{e.titulo}</h3>
+                          {indice && indice.compatibilidade != null && (
+                            <span className="ml-auto text-xs px-2 py-0.5 bg-pink-500/15 text-pink-300 rounded-full font-semibold">
+                              💞 {indice.compatibilidade}%
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {participantes.map((uid: string) => {
+                            const r = trackData.respostas.find((x: any) => x.etapa === n && x.user_id === uid)
+                            const ds = trackData.desejos.filter((d: any) => d.etapa === n && d.user_id === uid)
+                            const key = `${n}-${uid}`
+                            return (
+                              <div key={uid} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/30">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-gray-300 text-xs font-medium">{getProfileName(uid)}</span>
+                                  {r ? (
+                                    <span className="px-2 py-0.5 bg-green-500/15 text-green-300 rounded-full text-[10px] font-semibold">✓ Respondeu</span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 bg-slate-600/30 text-gray-400 rounded-full text-[10px] font-semibold">⏳ Pendente</span>
+                                  )}
+                                </div>
+
+                                {r ? (
+                                  <p className="text-gray-300 text-sm italic leading-relaxed">&ldquo;{r.resposta}&rdquo;</p>
+                                ) : (
+                                  <p className="text-gray-600 text-xs italic">Sem resposta ainda</p>
+                                )}
+
+                                {r?.opcoes_selecionadas && r.opcoes_selecionadas.length > 0 && (
+                                  <div className="flex gap-1 mt-2 flex-wrap">
+                                    {r.opcoes_selecionadas.map((o: string) => (
+                                      <span key={o} className="px-2 py-0.5 bg-pink-500/20 text-pink-300 rounded-full text-[10px]">{o}</span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {ds.length > 0 && (
+                                  <div className="mt-2">
+                                    <button
+                                      onClick={() => setTrackExpanded(trackExpanded === key ? null : key)}
+                                      className="text-pink-300 text-[11px] font-medium hover:text-pink-200 transition"
+                                    >
+                                      🏹 {ds.length} {ds.length === 1 ? 'pedido' : 'pedidos'} ao Eros {trackExpanded === key ? '▲' : '▼'}
+                                    </button>
+                                    {trackExpanded === key && (
+                                      <div className="mt-2 space-y-2">
+                                        {ds.map((d: any) => (
+                                          <div key={d.id} className="bg-slate-800/60 rounded-md p-2 border border-slate-700/30">
+                                            <p className="text-purple-300 text-[11px] font-medium">👤 {d.pergunta}</p>
+                                            <p className="text-indigo-200 text-[11px] mt-0.5 whitespace-pre-line">🏹 {d.resposta}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )
+          })()}
         </div>
 
         {/* ===== PALAVRAS FINAIS (ENCERRAMENTO) ===== */}
