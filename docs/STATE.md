@@ -47,6 +47,15 @@ Felipe iniciou um experimento novo com **Maria Clara** (no lugar da Samira):
   `middleware.ts`, override via env `ADMIN_USER_ID`). Antes, qualquer conta logada
   acessava. Não-admin: redirect (página) ou 403 (API).
 
+### Fix: perfis dos participantes sobreviviam à sessão (sumiam no reset)
+- Perfis ([PERFIL] em `admin_context`) eram gravados com o `session_id` da sessão
+  ativa → `ON DELETE CASCADE` os apagava quando a sessão era resetada. Agora são
+  salvos com `session_id = null` (nível pessoa, sobrevivem a reset) e substituem o
+  perfil anterior do mesmo user (sem duplicar). `src/app/api/admin/context/route.ts`.
+- IMPORTANTE: os perfis preenchidos antes desse fix NÃO foram recuperáveis
+  (0 linhas em `admin_context` — nunca persistiram / foram apagados no reset).
+  Felipe deve repreenchê-los uma vez (agora ficam permanentes).
+
 ### Feature nova no painel admin: "📊 Acompanhamento por Etapa"
 - `src/app/admin/page.tsx`: seção que mostra, por etapa (1→6), os dois participantes
   lado a lado — ✓ respondeu / ⏳ pendente, texto da resposta, opções, pedidos ao Eros
