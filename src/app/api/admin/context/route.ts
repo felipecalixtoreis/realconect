@@ -13,10 +13,22 @@ export async function POST(request: NextRequest) {
     const { session_id, user_id, contexto } = await request.json()
     const admin = createAdminClient()
 
+    // Perfis dos participantes ([PERFIL] ...) descrevem a PESSOA, não a sessão.
+    // Por isso são gravados com session_id = null (sobrevivem a qualquer reset de
+    // sessão) e substituem o perfil anterior do mesmo participante (sem duplicar).
+    const isPerfil = typeof contexto === 'string' && contexto.startsWith('[PERFIL] ')
+    if (isPerfil && user_id) {
+      await admin
+        .from('admin_context')
+        .delete()
+        .eq('user_id', user_id)
+        .like('contexto', '[PERFIL] %')
+    }
+
     const { error } = await admin
       .from('admin_context')
       .insert({
-        session_id: session_id || null,
+        session_id: isPerfil ? null : (session_id || null),
         user_id: user_id || null,
         contexto,
       })
