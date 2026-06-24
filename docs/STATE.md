@@ -40,9 +40,12 @@ Felipe iniciou um experimento novo com **Maria Clara** (no lugar da Samira):
   As respostas do Felipe também zeraram (a pedido dele).
 - **Sessão nova ativa**: Felipe ↔ Maria Clara, etapa 1, 0 respostas
   (id `074ed531-794d-4ec3-9c80-5814cb7ee702`).
-- **Conta da Samira preservada** (login + profile), apenas sem sessão. Felipe pode
-  pedir pra apagá-la depois.
+- **Conta da Samira EXCLUÍDA** (auth + profile via cascata). Restam só Felipe
+  Calixto e Maria Clara.
 - Logins validados via `signInWithPassword` (Felipe e Maria Clara).
+- **`/admin` e `/api/admin/*` agora restritos ao Felipe** (gate por `user.id` no
+  `middleware.ts`, override via env `ADMIN_USER_ID`). Antes, qualquer conta logada
+  acessava. Não-admin: redirect (página) ou 403 (API).
 
 ### Feature nova no painel admin: "📊 Acompanhamento por Etapa"
 - `src/app/admin/page.tsx`: seção que mostra, por etapa (1→6), os dois participantes
