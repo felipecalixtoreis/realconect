@@ -9,24 +9,15 @@ interface CountdownTimerProps {
   onUnlocked?: () => void
 }
 
+/** Intervalo entre etapas: 12 horas após a última resposta. */
+export const INTERVALO_ETAPA_HORAS = 12
+
 /**
- * Calculates the next unlock time: 20:00 (8pm) of the day AFTER the last response.
- * If the user responded before 20:00, unlock is at 20:00 of the same day.
- * If the user responded after 20:00, unlock is at 20:00 of the next day.
+ * Calcula quando a próxima etapa libera: exatamente 12 horas após a última resposta.
  */
 function calcularProximaLiberacao(ultimaResposta: string): Date {
   const dataResposta = new Date(ultimaResposta)
-
-  // Create a date for 20:00 on the same day as the response (in local timezone)
-  const liberacao = new Date(dataResposta)
-  liberacao.setHours(20, 0, 0, 0)
-
-  // If the response was at or after 20:00, next unlock is 20:00 the next day
-  if (dataResposta.getHours() >= 20) {
-    liberacao.setDate(liberacao.getDate() + 1)
-  }
-
-  return liberacao
+  return new Date(dataResposta.getTime() + INTERVALO_ETAPA_HORAS * 60 * 60 * 1000)
 }
 
 function formatarTempo(ms: number): { horas: string; minutos: string; segundos: string } {
@@ -91,7 +82,7 @@ export function CountdownTimer({ ultimaRespostaCriadoEm, onUnlocked }: Countdown
           </svg>
         </div>
         <div>
-          <h4 className="text-indigo-300 text-sm font-semibold">Próxima etapa será liberada às 20h</h4>
+          <h4 className="text-indigo-300 text-sm font-semibold">A próxima etapa será liberada em breve</h4>
           <p className="text-indigo-200/40 text-xs">O tempo é parte do experimento</p>
         </div>
       </div>
@@ -143,7 +134,7 @@ export function CountdownTimer({ ultimaRespostaCriadoEm, onUnlocked }: Countdown
 
 /**
  * Utility function to check if the next stage is time-locked.
- * Returns true if the user must wait until the next 20:00.
+ * Returns true if fewer than 12 hours have passed since the last response.
  */
 export function isEtapaBloqueadaPorTempo(ultimaRespostaCriadoEm: string): boolean {
   const proximaLiberacao = calcularProximaLiberacao(ultimaRespostaCriadoEm)

@@ -19,26 +19,28 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient()
 
-    // Check daily limit (1 response per day) unless admin override
+    // Limite de ritmo: 12 horas desde a última resposta (salvo override admin).
+    // Espelha a regra do CountdownTimer no frontend.
+    const INTERVALO_MS = 12 * 60 * 60 * 1000
     if (!skip_daily_limit) {
-      const today = new Date()
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
-
-      const { data: todayResponses } = await admin
+      const { data: respList } = await admin
         .from('respostas')
-        .select('id, etapa')
+        .select('etapa, criado_em')
         .eq('session_id', session_id)
         .eq('user_id', user.id)
-        .gte('criado_em', startOfDay)
-        .lt('criado_em', endOfDay)
+        .order('criado_em', { ascending: false })
+        .limit(1)
 
-      if (todayResponses && todayResponses.length > 0) {
-        return NextResponse.json({
-          error: 'Você já respondeu uma pergunta hoje. Volte amanhã para a próxima etapa.',
-          daily_limit: true,
-          responded_etapa: todayResponses[0].etapa,
-        }, { status: 429 })
+      const ultima = respList?.[0]
+      if (ultima) {
+        const msDesdeUltima = Date.now() - new Date(ultima.criado_em).getTime()
+        if (msDesdeUltima < INTERVALO_MS) {
+          return NextResponse.json({
+            error: 'Ainda não chegou a hora da próxima etapa. Aguarde as 12 horas desde a última resposta.',
+            daily_limit: true,
+            responded_etapa: ultima.etapa,
+          }, { status: 429 })
+        }
       }
     }
 
